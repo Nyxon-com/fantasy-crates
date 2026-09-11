@@ -45,6 +45,38 @@ public final class ExternalItemService {
     public boolean isItemsadderEnabled() { return itemsadderEnabled; }
     public boolean isNexoEnabled()       { return nexoEnabled; }
 
+    public ItemStack resolveById(String raw, int amount) {
+        if (raw == null || raw.isBlank()) return null;
+        String id = stripNamespace(raw.trim());
+        int qty = Math.max(1, amount);
+
+        if (looksPrefixed(raw)) {
+            ItemStack prefixed = resolveBase(ItemSpec.parse(raw.trim()), qty);
+            if (isRealItem(prefixed)) return prefixed;
+        }
+
+        if (mmoitemsEnabled) {
+            ItemStack mmo = resolveMmoItemsById(id, qty);
+            if (isRealItem(mmo)) return mmo;
+        }
+        if (nexoEnabled) {
+            ItemStack nexo = resolveNexo(ItemSpec.nexo(id), qty);
+            if (isRealItem(nexo)) return nexo;
+            ItemStack nexoLower = resolveNexo(ItemSpec.nexo(id.toLowerCase(Locale.ROOT)), qty);
+            if (isRealItem(nexoLower)) return nexoLower;
+        }
+        if (itemsadderEnabled) {
+            ItemStack ia = resolveItemsAdder(ItemSpec.itemsadder(id), qty);
+            if (isRealItem(ia)) return ia;
+        }
+
+        Material mat = Material.matchMaterial(id.toUpperCase(Locale.ROOT));
+        if (mat != null && !mat.isAir() && mat.isItem()) {
+            return new ItemStack(mat, qty);
+        }
+        return null;
+    }
+
     public ItemSpec identify(ItemStack item) {
         if (item == null || item.getType().isAir()) {
             return ItemSpec.vanilla("STONE");
@@ -211,6 +243,42 @@ public final class ExternalItemService {
             meta.setCustomModelData(customModelData);
         }
         item.setItemMeta(meta);
+    }
+
+    private ItemStack resolveMmoItemsById(String id, int amount) {
+        if (id.contains(":")) {
+            ItemStack typed = resolveMmoItems(ItemSpec.mmoitems(id), amount);
+            if (isRealItem(typed)) return typed;
+        }
+        try {
+            for (net.Indyuce.mmoitems.api.Type type : net.Indyuce.mmoitems.MMOItems.plugin.getTypes().getAll()) {
+                ItemStack item = net.Indyuce.mmoitems.MMOItems.plugin.getItem(type, id);
+                if (item == null) {
+                    item = net.Indyuce.mmoitems.MMOItems.plugin.getItem(type, id.toUpperCase(Locale.ROOT));
+                }
+                if (item != null && !item.getType().isAir()) {
+                    item.setAmount(Math.max(1, amount));
+                    return item;
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private static boolean looksPrefixed(String raw) {
+        String lower = raw.toLowerCase(Locale.ROOT);
+        return lower.startsWith("mmoitems:") || lower.startsWith("itemsadder:") || lower.startsWith("nexo:");
+    }
+
+    private static String stripNamespace(String id) {
+        if (id.toLowerCase(Locale.ROOT).startsWith("minecraft:")) {
+            return id.substring("minecraft:".length());
+        }
+        return id;
+    }
+
+    private static boolean isRealItem(ItemStack item) {
+        return item != null && !item.getType().isAir() && item.getType() != Material.BARRIER;
     }
 
     private static ItemStack fallback(int amount) {
