@@ -1,0 +1,34 @@
+# Aspetto e suoni delle chiavi.
+# L ID sotto keys: deve coincidere col nome file della crate (es. example.yml → example).
+
+defaults:
+  symbol: "✦"
+  format: "<gold>%symbol%</gold> <yellow>%amount%</yellow> <gray>chiavi %crate%</gray>"
+  sound:
+    given: "ENTITY_PLAYER_LEVELUP"
+    taken: "BLOCK_NOTE_BLOCK_BASS"
+  messages:
+    given: "<green>Date <yellow>%amount%</yellow> chiavi <gold>%crate%</gold> a <white>%player%</white>.</green>"
+    received: "<green>Hai ricevuto <yellow>%amount%</yellow> chiavi <gold>%crate%</gold>!</green>"
+    taken: "<red>Rimosse <yellow>%amount%</yellow> chiavi <gold>%crate%</gold> da <white>%player%</white>.</red>"
+    set: "<yellow>Saldo chiavi <gold>%crate%</gold> di <white>%player%</white> impostato a <yellow>%amount%</yellow>.</yellow>"
+    balance: "<gold>%crate%</gold> <dark_gray>·</dark_gray> inventario <gold>%physical%</gold> <dark_gray>·</dark_gray> virtuali <yellow>%amount%</yellow>"
+
+keys:
+  example:
+    name: "<gradient:#C9A227:#E8D48B><bold>Chiave di Valary</bold></gradient>"
+    symbol: "✦"
+    item: "TRIPWIRE_HOOK"
+    glow: true
+    lore:
+      - "<dark_gray>❖ Reliquiario di Valary</dark_gray>"
+      - "<gray>Clic destro sulla crate per aprirla.</gray>"
+    format: "<gold>%symbol%</gold> <yellow>%amount%</yellow> <gray>%crate%</gray>"
+    sound:
+      given: "ENTITY_PLAYER_LEVELUP"
+      taken: "BLOCK_NOTE_BLOCK_BASS"
+    messages:
+      given: "<green>Ricevute <yellow>%amount%</yellow> %name%!</green>"
+      taken: "<red>Rimosse <yellow>%amount%</yellow> %name%.</red>"
+      set: "<yellow>Saldo %name% impostato a <yellow>%amount%</yellow>.</yellow>"
+      balance: "<gold>Saldo %name%: inventario <yellow>%physical%</yellow> · virtuali <yellow>%amount%</yellow></gold>"

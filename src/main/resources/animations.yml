@@ -1,0 +1,115 @@
+# GUI:  CSGO, ROULETTE
+# 3D:   ROLL, SPIRAL
+# Lootbox: LOOTBOX
+
+ambient_effects:
+  gold_orbit:
+    style: ORBIT
+    particle: END_ROD
+    count: 2
+    radius: 0.9
+    height: 0.55
+    interval-ticks: 2
+
+  rune_helix:
+    style: HELIX
+    particle: ENCHANT
+    count: 2
+    radius: 0.7
+    height: 1.4
+    interval-ticks: 2
+
+  amethyst_pulse:
+    style: PULSE
+    particle: ENCHANT
+    count: 8
+    radius: 0.85
+    height: 0.4
+    interval-ticks: 4
+
+  soul_helix:
+    style: HELIX
+    particle: SOUL_FIRE_FLAME
+    count: 2
+    radius: 0.7
+    height: 1.4
+    interval-ticks: 2
+
+  flame_ring:
+    style: RING
+    particle: FLAME
+    count: 4
+    radius: 0.65
+    height: 0.15
+    interval-ticks: 12
+
+  portal_spiral:
+    style: SPIRAL
+    particle: PORTAL
+    count: 3
+    radius: 0.8
+    height: 1.6
+    interval-ticks: 2
+
+  cherry_rain:
+    style: RAIN
+    particle: CHERRY_LEAVES
+    count: 3
+    radius: 0.7
+    height: 1.8
+    interval-ticks: 3
+
+opening_animations:
+  default:
+    type: CSGO
+    particle: END_ROD
+    duration-ticks: 48
+    sound: BLOCK_NOTE_BLOCK_HAT
+    final-sound: ENTITY_PLAYER_LEVELUP
+    volume: 1.0
+    pitch: 1.0
+
+  csgo:
+    type: CSGO
+    particle: END_ROD
+    duration-ticks: 48
+    sound: BLOCK_NOTE_BLOCK_HAT
+    final-sound: ENTITY_PLAYER_LEVELUP
+    volume: 1.0
+    pitch: 1.0
+
+  roulette:
+    type: ROULETTE
+    particle: CRIT
+    duration-ticks: 50
+    sound: BLOCK_NOTE_BLOCK_BASS
+    final-sound: ENTITY_PLAYER_LEVELUP
+    volume: 0.9
+    pitch: 1.0
+
+  roll:
+    type: ROLL
+    particle: END_ROD
+    duration-ticks: 54
+    sound: BLOCK_NOTE_BLOCK_HAT
+    final-sound: ENTITY_PLAYER_LEVELUP
+    volume: 1.0
+    pitch: 1.0
+
+  spiral:
+    type: SPIRAL
+    particle: ENCHANT
+    duration-ticks: 50
+    sound: BLOCK_AMETHYST_BLOCK_CHIME
+    final-sound: ENTITY_PLAYER_LEVELUP
+    volume: 1.0
+    pitch: 1.0
+
+  lootbox:
+    type: LOOTBOX
+    particle: FIREWORK
+    duration-ticks: 160
+    sound: BLOCK_CHEST_OPEN
+    final-sound: ENTITY_PLAYER_LEVELUP
+    volume: 1.0
+    pitch: 1.0

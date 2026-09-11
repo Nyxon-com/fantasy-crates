@@ -1,0 +1,78 @@
+# Valary – messages.yml
+# MiniMessage + legacy & codes
+
+prefix: '<dark_gray>[<gradient:#C9A227:#E8D48B><bold>Valary</bold></gradient>]</dark_gray> '
+
+no-permission:  '<red>Non hai il permesso per farlo.</red>'
+unknown-crate:  '<red>Crate sconosciuta: <gray>%crate%</gray>.</red>'
+player-not-found: '<red>Giocatore non trovato: <gray>%player%</gray>.</red>'
+invalid-amount: '<red>Quantita non valida: <gray>%amount%</gray>.</red>'
+reload:         '<green>Plugin ricaricato correttamente.</green>'
+database-error: '<red>Database non disponibile, riprova tra poco.</red>'
+invalid-target: '<red>Guarda un blocco valido entro <gray>6 blocchi</gray>.</red>'
+already-opening: '<gold>Stai gia aprendo una crate. Attendi il premio.</gold>'
+
+key-given:  '<green>Hai ricevuto <yellow>%amount%x</yellow> chiavi <gold>%crate%</gold> <gray>(%type%)</gray>.</green>'
+key-given-physical: '<green>Hai ricevuto <yellow>%amount%x</yellow> chiavi fisiche <gold>%crate%</gold>.</green>'
+key-given-virtual:  '<green>Aggiunte <yellow>%amount%x</yellow> chiavi virtuali <gold>%crate%</gold> al tuo saldo.</green>'
+key-given-admin:    '<green>Date <yellow>%amount%x</yellow> chiavi <gray>(%type%)</gray> <gold>%crate%</gold> a <white>%player%</white>.</green>'
+key-taken:          '<red>Rimosse <yellow>%amount%x</yellow> chiavi <gold>%crate%</gold>.</red>'
+key-taken-admin:    '<red>Rimosse <yellow>%amount%x</yellow> chiavi <gold>%crate%</gold> da <white>%player%</white>.</red>'
+key-set:            '<yellow>Saldo virtuale <gold>%crate%</gold> impostato a <white>%amount%</white>.</yellow>'
+key-set-admin:      '<yellow>Saldo virtuale <gold>%crate%</gold> di <white>%player%</white> impostato a <white>%amount%</white>.</yellow>'
+keys-header:        '<gold><bold>Le tue chiavi</bold></gold>'
+keys-line:          '<gray>• </gray>%crate% <dark_gray>(%id%)</dark_gray> <dark_gray>·</dark_gray> <gray>inventario</gray> <gold>%physical%</gold> <dark_gray>·</dark_gray> <gray>virtuali</gray> <yellow>%virtual%</yellow>'
+keys-empty:         '<gray>Non hai chiavi. Un admin usa </gray><white>/crate give %player% example 10</white><gray>.</gray>'
+keys-hint:          '<dark_gray>/chiave <crate> per il dettaglio di una crate.</dark_gray>'
+item-given: '<green>Hai ricevuto l item della crate <gold>%crate%</gold>.</green>'
+
+need-key: '<red>Ti serve una chiave <gold>%crate%</gold> per aprire questa crate. <gray>(%type%)</gray></red>'
+need-virtual-key: '<red>Hai <yellow>0</yellow> chiavi virtuali <gold>%crate%</gold>.</red>'
+need-crate: '<red>Non hai la crate <gold>%crate%</gold> nell inventario.</red>'
+
+opening: '<gold>Aprendo </gold><gradient:#C9A227:#E8D48B><bold>%crate%</bold></gradient><gold>...</gold>'
+reward:  '<gold>Hai ottenuto: </gold><white>%reward%</white><gold>!</gold>'
+no-rewards: '<red>Questa crate non ha premi configurati.</red>'
+created: '<green>Crate piazzata e attivata!</green>'
+removed: '<green>Crate rimossa.</green>'
+use-break-command: '<red>Le crate sono protette. Usa <gold>/crate break</gold> guardandola.</red>'
+
+milestone: '<gold>Traguardo <yellow>%milestone%</yellow> completato in </gold><white>%crate%</white><gold>!</gold>'
+
+crate-saved:         '<green>Crate <gold>%crate%</gold> salvata e ricaricata.</green>'
+crate-deleted:       '<green>Crate <gold>%crate%</gold> eliminata.</green>'
+editor-no-permission: '<red>Solo gli admin possono usare l editor.</red>'
+
+editor-input-prompt:      '<gray>Modifica <gold>%field%</gold> — attuale: <white>%current%</white></gray>'
+editor-input-suggestions: '<dark_gray>Suggerimenti: %suggestions%</dark_gray>'
+editor-input-hint:        '<dark_gray>Scrivi il nuovo valore in chat · <yellow>cancel</yellow> per annullare · <yellow>default</yellow> per lasciare</dark_gray>'
+editor-input-cancelled:   '<yellow>Input annullato.</yellow>'
+editor-input-timeout:     '<red>Tempo scaduto, editor riaperto.</red>'
+
+preview-title:         '<gold>%crate%</gold>'
+preview-summary-name:  '<gold>%crate% <gray>– Premi</gray>'
+preview-summary-lore:
+  - '<gray>Premi totali: <white>%rewards%</white></gray>'
+  - '<gray>Peso totale:  <white>%totalweight%</white></gray>'
+  - ''
+  - '<dark_gray>Clic sinistro su una crate per l anteprima</dark_gray>'
+
+preview-reward-lore:
+  - ''
+  - '<gray>Possibilità  %chance%</gray>'
+  - '<gray>Rarità       %rarity%</gray>'
+
+preview-reward-permission: '<dark_gray>  <gray>Richiede: <red>%permission%</red></gray>'
+
+chance-high: '<green>%chance%</green>'
+chance-mid:  '<yellow>%chance%</yellow>'
+chance-low:  '<gold>%chance%</gold>'
+chance-epic: '<light_purple>%chance%</light_purple>'
+chance-na:   '<gray>N/D</gray>'
+
+rarity-common:    '<green>Comune</green>'
+rarity-uncommon:  '<yellow>Non comune</yellow>'
+rarity-rare:      '<gold>Raro</gold>'
+rarity-epic:      '<light_purple>Epico</light_purple>'
+rarity-legendary: '<gradient:#C9A227:#E8D48B><bold>Leggendario</bold></gradient>'
+rarity-unknown:   '<gray>Sconosciuto</gray>'

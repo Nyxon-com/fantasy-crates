@@ -1,0 +1,153 @@
+# ID file = example
+# Comandi validi: /crate give valary 10   /crate give example 10   /chiave
+id: valary
+aliases:
+  - valary
+  - default
+  - crate
+
+display-name: '<gold>Crate di Valary</gold>'
+
+# PHYSICAL = item in inventario (uncino luminoso)
+# VIRTUAL  = solo saldo, vedi /chiave
+# LOOTBOX  = forziere apribile in mano
+key-type: PHYSICAL
+key:
+  item: TRIPWIRE_HOOK
+
+animation: csgo
+
+display:
+  block: CHEST
+  custom-model-data: 0
+  glowing-outline: false
+
+  hologram:
+    lines:
+      - '<gold>CRATE DI VALARY</gold>'
+      - '<gray>Clic sinistro: anteprima</gray>'
+      - '<dark_gray>Clic destro: apri con chiave</dark_gray>'
+    height-offset: 1.85
+    refresh-rate: 40
+
+  idle-effect: gold_orbit
+
+  # Vuoto = usa opening-title in config.yml
+  # text: none  → nessun titolo per questa crate
+  title:
+    text: ''
+    subtitle: ''
+    fade-in:  8
+    stay:     36
+    fade-out: 12
+
+broadcast: '<gold><yellow>%player%</yellow> <gold>ha svelato </gold><white>%reward%</white> <gold>nella Crate di Valary!</gold>'
+broadcast-threshold: 0
+preview-on-left-click: true
+
+preview:
+  enabled: true
+  title: 'Crate di Valary'
+  rows: 5
+  filler:
+    item: BLACK_STAINED_GLASS_PANE
+    name: ' '
+    fill-empty: true
+  slots:
+    "0-8":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "9":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "10-16": reward
+    "17":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "18":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "19-25": reward
+    "26":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "27":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "28-34": reward
+    "35":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "36-37":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "38":
+      item: ARROW
+      name: '<gray>Pagina precedente</gray>'
+      sound: UI_BUTTON_CLICK
+      action: PREVIOUS_PAGE
+    "39":
+      item: NETHER_STAR
+      name: '<green>Apri</green>'
+      lore:
+        - '<gray>Chiavi: <white>%keys%</white></gray>'
+      sound: UI_BUTTON_CLICK
+      action: OPEN_CRATE
+    "41":
+      item: BARRIER
+      name: '<red>Chiudi</red>'
+      sound: UI_BUTTON_CLICK
+      action: CLOSE
+    "42":
+      item: ARROW
+      name: '<gray>Pagina successiva</gray>'
+      sound: UI_BUTTON_CLICK
+      action: NEXT_PAGE
+    "43-44":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+rewards:
+  - id: essenza
+    item: AMETHYST_SHARD
+    amount: 4
+    name: '<light_purple>4x Essenza Arcana</light_purple>'
+    lore:
+      - '<dark_purple>Frammenti di magia di Valary</dark_purple>'
+    glow: false
+    commands:
+      - 'give %player% amethyst_shard 4'
+    weight: 70
+    broadcast: true
+
+  - id: oro
+    item: GOLD_INGOT
+    amount: 8
+    name: '<gold>8x Lingotti d Oro</gold>'
+    lore:
+      - '<gray>Tesoro delle carovane</gray>'
+    glow: false
+    commands:
+      - 'give %player% gold_ingot 8'
+    weight: 22
+    broadcast: true
+
+  - id: reliquia
+    item: NETHERITE_INGOT
+    amount: 1
+    name: '<gradient:#C9A227:#7B4FA0><bold>Reliquia Antica</bold></gradient>'
+    lore:
+      - '<gold>Un reperto delle terre di Valary</gold>'
+    glow: true
+    commands:
+      - 'give %player% netherite_ingot 1'
+    weight: 8
+    broadcast: true
+
+milestones:
+  tenth_open:
+    openings-required: 10
+    rewards:
+      - 'give %player% gold_ingot 16'
+    broadcast: false
+    reset-after-claim: false

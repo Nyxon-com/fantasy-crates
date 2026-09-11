@@ -1,0 +1,148 @@
+language: it
+
+database:
+  # SQLite parte sempre e crea plugins/HazeCrates/data.db
+  # (aperture, leaderboard, chiavi virtuali, milestone).
+  # Per MySQL/MariaDB: driver: mysql e enabled: true.
+  enabled: true
+  driver: sqlite
+  host: localhost
+  port: 3306
+  database: minecraft
+  user: root
+  password: ''
+  pool-size: 4
+  connection-timeout-ms: 5000
+  useSSL: false
+
+key:
+  glow: true
+  name: '<gradient:#C9A227:#E8D48B><bold>Chiave %crate%</bold></gradient>'
+  lore:
+    - '<dark_gray>❖ Valary RPG</dark_gray>'
+    - '<gray>Clic destro sulla crate per aprirla.</gray>'
+    - '<dark_gray>Non e un uncino normale: e una chiave.</dark_gray>'
+
+lootbox:
+  name: '<gold>%crate%</gold>'
+  auto-lore: true
+  header:
+    - '<gold>Bottino casuale:</gold>'
+  reward-line: '<gray>• </gray>%color%%reward%%color_close% <dark_gray>·</dark_gray> %rarity%'
+  footer:
+    - ''
+    - '<dark_gray>Clic destro per aprire</dark_gray>'
+  colors:
+    common: '<green>'
+    uncommon: '<yellow>'
+    rare: '<gold>'
+    epic: '<light_purple>'
+    legendary: '<red>'
+
+# Titolo a schermo quando si apre una crate. Per crate: display.title in YAML.
+# Lascia vuoto il titolo della crate per usare questi valori.
+# Scrivi none in display.title.text per non mostrare nulla.
+opening-title:
+  text: '<gold>IL DESTINO SI APRE</gold>'
+  subtitle: '<gray>Che le rune siano a tuo favore</gray>'
+  fade-in: 8
+  stay: 36
+  fade-out: 12
+
+preview:
+  reward-lore:
+    - ''
+    - '<gray>Possibilità  %chance%</gray>'
+    - '<gray>Rarità       %rarity%</gray>'
+
+  reward-permission: '<dark_gray>  <gray>Richiede: <red>%permission%</red></gray>'
+
+  chance:
+    high: '<green>%chance%</green>'
+    mid:  '<yellow>%chance%</yellow>'
+    low:  '<gold>%chance%</gold>'
+    epic: '<light_purple>%chance%</light_purple>'
+    na:   '<gray>N/D</gray>'
+
+  chance-thresholds:
+    high: 30
+    mid: 10
+    low: 2
+
+  rarity:
+    common:    '<green>Comune</green>'
+    uncommon:  '<yellow>Non comune</yellow>'
+    rare:      '<gold>Raro</gold>'
+    epic:      '<light_purple>Epico</light_purple>'
+    legendary: '<gradient:#C9A227:#E8D48B><bold>Leggendario</bold></gradient>'
+
+  rarity-thresholds:
+    common: 50
+    uncommon: 20
+    rare: 5
+    epic: 1
+
+default-preview:
+  enabled: true
+  title: '%crate_plain%'
+  rows: 5
+  filler:
+    item: BLACK_STAINED_GLASS_PANE
+    name: ' '
+    fill-empty: true
+  slots:
+    "0-8":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "9":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "10-16": reward
+    "17":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "18":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "19-25": reward
+    "26":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "27":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "28-34": reward
+    "35":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "36-37":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+    "38":
+      item: ARROW
+      name: '<gray>Pagina precedente</gray>'
+      sound: UI_BUTTON_CLICK
+      action: PREVIOUS_PAGE
+    "39":
+      item: NETHER_STAR
+      name: '<green>Apri</green>'
+      lore:
+        - '<gray>Chiavi: <white>%keys%</white></gray>'
+      sound: UI_BUTTON_CLICK
+      action: OPEN_CRATE
+    "41":
+      item: BARRIER
+      name: '<red>Chiudi</red>'
+      sound: UI_BUTTON_CLICK
+      action: CLOSE
+    "42":
+      item: ARROW
+      name: '<gray>Pagina successiva</gray>'
+      sound: UI_BUTTON_CLICK
+      action: NEXT_PAGE
+    "43-44":
+      item: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+leaderboard-cache-seconds: 60
+database-async-workers: 2

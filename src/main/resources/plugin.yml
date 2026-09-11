@@ -1,0 +1,30 @@
+name: HazeCrates
+version: ${version}
+main: it.haze.hazecrates.HazeCrates
+api-version: '1.21'
+softdepend: [PlaceholderAPI, Vault, MMOItems, ItemsAdder, Nexo]
+commands:
+  crate:
+    description: HazeCrates
+    usage: /crate give <giocatore> <crate> [quantita]
+    aliases: [crates]
+    permission: ''
+  open:
+    description: Apri una crate se hai la chiave o il forziere
+    usage: /open [giocatore] <crate>
+    permission: ''
+  hc:
+    description: Editor crate
+    usage: /hc editor [crate]
+    permission: hazecrates.admin
+  chiave:
+    aliases: [chiavi, keys]
+    description: Saldo chiavi
+    usage: /chiave [crate]
+    permission: ''
+permissions:
+  hazecrates.admin:    { default: op }
+  hazecrates.key:      { default: op, description: 'Puo dare e togliere chiavi' }
+  hazecrates.item:     { default: op, description: 'Puo ricevere l item di piazzamento' }
+  hazecrates.preview:  { default: true }
+  hazecrates.open.*:   { default: true }
