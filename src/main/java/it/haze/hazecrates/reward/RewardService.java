@@ -36,11 +36,13 @@ public final class RewardService {
     }
 
     public void grant(Player player, CrateDefinition crate, RewardDefinition reward) {
-        boolean gaveItem = false;
+        boolean hasCommands = false;
         for (String cmd : reward.commands()) {
-            gaveItem |= run(player, cmd);
+            if (cmd == null || cmd.isBlank()) continue;
+            hasCommands = true;
+            run(player, cmd);
         }
-        if (!gaveItem) {
+        if (!hasCommands) {
             give(player, reward.icon());
         }
 
