@@ -8,6 +8,7 @@ import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
@@ -98,6 +99,23 @@ public final class WorldOpeningSupport {
                 center.getZ() + radius * Math.sin(angle + Math.PI),
                 1, 0.02, 0.02, 0.02, 0
         );
+    }
+
+    public static void facePlayer(ItemDisplay display, Player player) {
+        if (display == null || !display.isValid() || player == null || !player.isOnline()) {
+            return;
+        }
+        Location from = display.getLocation();
+        Location to = player.getEyeLocation();
+        double dx = to.getX() - from.getX();
+        double dz = to.getZ() - from.getZ();
+        if (dx * dx + dz * dz < 1.0E-6) {
+            return;
+        }
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)) + 180f;
+        display.setBillboard(Display.Billboard.FIXED);
+        display.setTeleportDuration(1);
+        display.setRotation(yaw, 0f);
     }
 
     public static void remove(Entity entity) {

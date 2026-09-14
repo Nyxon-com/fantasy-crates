@@ -83,17 +83,22 @@ public final class CrateEditorGui {
                 "&7 • &eLOOTBOX &7(item in mano, click destro)"));
 
         String keyLabel = session.keyItemSpec() != null ? formatSpec(session.keyItemSpec()) : "TRIPWIRE_HOOK";
-        inv.setItem(SLOT_KEY_ITEM, of(Material.TRIPWIRE_HOOK,
-                "&bItem chiave",
-                "&8Attuale: &f" + keyLabel,
-                "",
-                "&8Formati:",
-                "&7  MATERIAL_NAME",
-                "&7  mmoitems:TYPE:ID",
-                "&7  itemsadder:namespace:id",
-                "&7  nexo:item_id",
-                "",
-                "&7Clicca → scrivi in chat"));
+        ItemStack keyPreview = plugin.externalItems().resolve(
+                session.keyItemSpec() != null ? session.keyItemSpec() : ItemSpec.vanilla("TRIPWIRE_HOOK"));
+        ItemMeta keyMeta = keyPreview.getItemMeta();
+        if (keyMeta != null) {
+            keyMeta.displayName(legacy("&bItem chiave"));
+            keyMeta.lore(List.of(
+                    legacy("&8Attuale: " + keyLabel),
+                    legacy(""),
+                    legacy("&8Formati: MATERIAL, nexo:id,"),
+                    legacy("&8mmoitems:TYPE:ID, itemsadder:ns:id"),
+                    legacy(""),
+                    legacy("&7Tieni l item Nexo e cliccalo qui"),
+                    legacy("&7oppure clicca a vuoto e scrivi l id")));
+            keyPreview.setItemMeta(keyMeta);
+        }
+        inv.setItem(SLOT_KEY_ITEM, keyPreview);
 
         String animList = String.join("&7, &e", plugin.animations().ids());
         if (animList.isBlank()) animList = "default";
@@ -174,7 +179,7 @@ public final class CrateEditorGui {
 
         inv.setItem(SLOT_BACK,   back());
         inv.setItem(SLOT_SAVE,   save());
-        inv.setItem(SLOT_DELETE, delete());
+        inv.setItem(SLOT_DELETE, session.isDeleteConfirmArmed() ? deleteConfirm() : delete());
 
         fillAll(inv);
         player.openInventory(inv);

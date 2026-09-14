@@ -52,11 +52,12 @@ public final class KeyService {
         String path = "keys." + crate.id();
         boolean isLootbox = crate.keyType() == it.haze.hazecrates.crate.KeyType.LOOTBOX;
 
-        ItemSpec spec = crate.keySpec();
-        String overrideItem = keysYml.getString(path + ".item", "");
-        if (overrideItem != null && !overrideItem.isBlank()) {
-            spec = ItemSpec.parse(overrideItem);
-        }
+        ItemSpec spec = keySpecOf(crate);
+
+        boolean live = spec != null && spec.provider() != ItemProvider.VANILLA;
+        boolean overrideAppearance = keysYml.getBoolean(path + ".override-appearance", false);
+        boolean hasCustomName = keysYml.isSet(path + ".name");
+        boolean hasCustomLore = !keysYml.getStringList(path + ".lore").isEmpty();
 
         String nameKey = isLootbox ? "lootbox.name" : "key.name";
         String defName = isLootbox
@@ -69,24 +70,30 @@ public final class KeyService {
         List<String> lore;
         if (isLootbox && plugin.getConfig().getBoolean("lootbox.auto-lore", true)) {
             lore = LootboxLore.build(plugin, crate);
+        } else if (hasCustomLore) {
+            lore = keysYml.getStringList(path + ".lore").stream()
+                    .map(l -> l.replace("%crate%", crate.displayName()))
+                    .toList();
         } else {
-            String loreKey = isLootbox ? "lootbox.lore" : "key.lore";
-            lore = keysYml.getStringList(path + ".lore");
-            if (lore.isEmpty()) lore = plugin.getConfig().getStringList(loreKey);
-            if (lore.isEmpty()) {
-                lore = List.of(
-                        "<dark_gray>Valary RPG</dark_gray>",
-                        isLootbox
-                                ? "<gray>Clic destro ovunque per svelare il premio.</gray>"
-                                : "<gray>Clic destro sulla crate per aprirla.</gray>"
-                );
-            }
+            lore = plugin.getConfig().getStringList(isLootbox ? "lootbox.lore" : "key.lore");
             lore = lore.stream().map(l -> l.replace("%crate%", crate.displayName())).toList();
         }
 
         boolean glow = keysYml.getBoolean(path + ".glow", plugin.getConfig().getBoolean("key.glow", true));
         int stack = Math.max(1, Math.min(64, amount));
-        ItemStack item = ext.resolve(spec, stack, name, lore, glow);
+        ItemStack item;
+        if (live && !overrideAppearance && !isLootbox) {
+            item = ext.resolve(spec, stack, hasCustomName ? name : null, hasCustomLore ? lore : null, false);
+            if (!hasCustomLore && item != null) {
+                ItemMeta wipe = item.getItemMeta();
+                if (wipe != null) {
+                    wipe.lore(List.of());
+                    item.setItemMeta(wipe);
+                }
+            }
+        } else {
+            item = ext.resolve(spec, stack, name, lore.isEmpty() ? null : lore, glow);
+        }
         if (item == null || item.getType().isAir()) {
             item = ext.resolve(ItemSpec.vanilla("TRIPWIRE_HOOK"), stack, name, lore, glow);
         }
@@ -134,7 +141,7 @@ public final class KeyService {
             return true;
         }
         if (crate == null) return false;
-        ItemSpec spec = crate.keySpec();
+        ItemSpec spec = keySpecOf(crate);
 
         if (spec.provider() == ItemProvider.MMOITEMS && plugin.externalItems().isMmoitemsEnabled())
             return isMmoKey(item, spec.id());
@@ -143,6 +150,14 @@ public final class KeyService {
         if (spec.provider() == ItemProvider.NEXO && plugin.externalItems().isNexoEnabled())
             return isNexoKey(item, spec.id());
         return false;
+    }
+
+    public ItemSpec keySpecOf(CrateDefinition crate) {
+        String overrideItem = keysConfig().getString("keys." + crate.id() + ".item", "");
+        if (overrideItem != null && !overrideItem.isBlank()) {
+            return ItemSpec.parse(overrideItem);
+        }
+        return crate.keySpec();
     }
 
     public void givePhysical(Player player, CrateDefinition crate, int amount) {

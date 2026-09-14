@@ -2,6 +2,7 @@
 package it.haze.hazecrates.listener;
 
 import it.haze.hazecrates.HazeCrates;
+import it.haze.hazecrates.animation.AnimationSession;
 import it.haze.hazecrates.animation.CrateAnimation;
 import it.haze.hazecrates.crate.CrateDefinition;
 import it.haze.hazecrates.crate.CratePlacementService;
@@ -62,26 +63,13 @@ public final class CrateListener implements Listener {
                 }
                 if (crate.keyType() == KeyType.LOOTBOX) {
                     event.setCancelled(true);
-                    if (!player.hasPermission("hazecrates.open." + crate.id()) && !player.hasPermission("hazecrates.open.*")) {
-                        plugin.messages().send(player, "no-permission");
-                        return;
-                    }
-                    if (plugin.hasAnimSession(player.getUniqueId())) {
-                        plugin.messages().send(player, "already-opening");
-                        return;
-                    }
-                    if (hand.getAmount() > 1) {
-                        hand.setAmount(hand.getAmount() - 1);
-                    } else {
-                        player.getInventory().setItemInMainHand(null);
-                    }
                     Location openLoc;
                     if (event.getClickedBlock() != null) {
                         openLoc = event.getClickedBlock().getLocation().add(0.5, 1.0, 0.5);
                     } else {
                         openLoc = player.getLocation().add(player.getLocation().getDirection().setY(0).normalize().multiply(1.8));
                     }
-                    open(player, crate, openLoc);
+                    tryOpen(player, crate, openLoc, true);
                     return;
                 }
 
@@ -200,13 +188,15 @@ public final class CrateListener implements Listener {
             plugin.messages().send(player, "no-permission");
             return;
         }
-        if (plugin.hasAnimSession(player.getUniqueId())) {
+        java.util.UUID uuid = player.getUniqueId();
+        if (!plugin.tryStartAnimSession(uuid, new AnimationSession(null, null))) {
             plugin.messages().send(player, "already-opening");
             return;
         }
 
         if (crate.keyType() == KeyType.LOOTBOX) {
             if (!consumePhysical(player, crate.id(), preferHand)) {
+                plugin.takeAnimSession(uuid);
                 plugin.messages().send(player, "need-crate", Map.of("crate", crate.displayName()));
                 return;
             }
@@ -222,12 +212,17 @@ public final class CrateListener implements Listener {
         plugin.keys().consumeVirtual(player.getUniqueId(), crate.id())
                 .whenComplete((consumed, error) ->
                         plugin.getServer().getScheduler().runTask(plugin, () -> {
-                            if (!player.isOnline()) return;
+                            if (!player.isOnline()) {
+                                plugin.takeAnimSession(uuid);
+                                return;
+                            }
                             if (error != null) {
+                                plugin.takeAnimSession(uuid);
                                 plugin.messages().send(player, "database-error");
                                 return;
                             }
                             if (!consumed) {
+                                plugin.takeAnimSession(uuid);
                                 if (crate.keyType() == KeyType.PHYSICAL) {
                                     plugin.messages().send(player, "need-key",
                                             Map.of("crate", crate.displayName(), "type", "fisica o virtuale"));
@@ -235,10 +230,6 @@ public final class CrateListener implements Listener {
                                     plugin.messages().send(player, "need-virtual-key",
                                             Map.of("crate", crate.displayName()));
                                 }
-                                return;
-                            }
-                            if (plugin.hasAnimSession(player.getUniqueId())) {
-                                plugin.messages().send(player, "already-opening");
                                 return;
                             }
                             open(player, crate, location);
@@ -258,7 +249,9 @@ public final class CrateListener implements Listener {
     }
 
     public void open(Player player, CrateDefinition crate, Location location) {
-        if (plugin.hasAnimSession(player.getUniqueId())) {
+        java.util.UUID uuid = player.getUniqueId();
+        if (!plugin.hasAnimSession(uuid)
+                && !plugin.tryStartAnimSession(uuid, new AnimationSession(null, null))) {
             plugin.messages().send(player, "already-opening");
             return;
         }
@@ -268,11 +261,15 @@ public final class CrateListener implements Listener {
                     plugin.display().sendOpenTitle(player, crate);
                     plugin.messages().send(player, "opening", Map.of("crate", crate.displayName()));
                     anim.play(player, location, crate, reward, () -> {
+                                plugin.takeAnimSession(uuid);
                                 plugin.rewards().grant(player, crate, reward);
                                 plugin.stats().recordOpening(player, crate);
                             });
                 },
-                () -> plugin.messages().send(player, "no-rewards"));
+                () -> {
+                    plugin.takeAnimSession(uuid);
+                    plugin.messages().send(player, "no-rewards");
+                });
     }
 
     public boolean breakCrateAt(Block block, Player player) {

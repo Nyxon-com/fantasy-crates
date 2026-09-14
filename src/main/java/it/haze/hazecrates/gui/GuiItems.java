@@ -101,7 +101,18 @@ public final class GuiItems {
         return of(Material.BARRIER,
                 "&cElimina crate",
                 "&7Rimuove definitivamente il file",
-                "&c&lAzione irreversibile!");
+                "&c&lAzione irreversibile!",
+                "",
+                "&eClicca per chiedere conferma");
+    }
+
+    public static ItemStack deleteConfirm() {
+        return ofGlow(Material.BARRIER,
+                "&c&lConferma eliminazione",
+                "&7Clicca di nuovo per eliminare",
+                "&c&lAzione irreversibile!",
+                "",
+                "&8Il secondo click scade dopo 10s");
     }
 
     public static ItemStack add(String label) {

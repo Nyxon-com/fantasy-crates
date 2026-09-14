@@ -14,6 +14,7 @@ display-name: '<gold>Crate di Valary</gold>'
 key-type: PHYSICAL
 key:
   item: TRIPWIRE_HOOK
+  # item: nexo:ID_ITEM   stesso id di /nexo give <player> ID_ITEM
 
 animation: csgo
 
