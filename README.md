@@ -67,13 +67,15 @@ Permessi: `hazecrates.admin` (op), `hazecrates.key` (give/take/set), `hazecrates
 
 ## Chiavi
 
-- **PHYSICAL** — item (`key.item`). Clic destro sul blocco crate.
+- **PHYSICAL** — item (`key.item`). Clic destro sul blocco crate. Per Nexo: `item: nexo:<id>` (stesso id di `/nexo give`). Il model Nexo resta intatto.
 - **VIRTUAL** — saldo in SQLite/MySQL. Clic destro sul blocco o pulsante Apri in preview.
 - **LOOTBOX** — forziere in mano, clic destro ovunque. Usa sempre l’animazione `lootbox`.
 
-`keys.yml` è solo aspetto e suoni. L’ID sotto `keys:` deve coincidere col nome file della crate.
+`keys.yml` è aspetto e suoni. L’ID sotto `keys:` deve coincidere col nome file della crate. `item: nexo:<id>` lì sovrascrive `key.item` della crate.
 
 `/crate give` su una crate PHYSICAL/LOOTBOX dà l’item; su VIRTUAL aggiorna il database.
+
+In `/hc editor` tieni l’item Nexo in mano e cliccalo sullo slot **Item chiave**.
 
 ## Reward
 
@@ -144,7 +146,7 @@ Nella GUI preview (titolo/lore): `%crate%`, `%crate_plain%`, `%player%`, `%keys%
 
 Blocco display: `display.block: 'nexo:my_crate'` piazza blocco/furniture Nexo se quell’id ce l’ha.
 
-In `/hc editor` tieni l’item e clicca lo slot materiale del reward (senza shift).
+In `/hc editor` tieni l’item e clicca lo slot materiale del reward o lo slot **Item chiave** (senza shift).
 
 ## Esempio crate
 

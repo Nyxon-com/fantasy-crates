@@ -41,6 +41,7 @@ milestone: '<gold>Traguardo <yellow>%milestone%</yellow> completato in </gold><w
 
 crate-saved:         '<green>Crate <gold>%crate%</gold> salvata e ricaricata.</green>'
 crate-deleted:       '<green>Crate <gold>%crate%</gold> eliminata.</green>'
+delete-confirm:      '<red>Clicca di nuovo su Elimina per confermare la rimozione di <gold>%crate%</gold>.</red>'
 editor-no-permission: '<red>Solo gli admin possono usare l editor.</red>'
 
 editor-input-prompt:      '<gray>Modifica <gold>%field%</gold> — attuale: <white>%current%</white></gray>'

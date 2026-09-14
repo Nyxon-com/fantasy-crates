@@ -62,6 +62,7 @@ public final class CrateEditorSession {
     private boolean rewardLoreOverride;
     private List<String> rewardLore;
     private List<String> rewardCommands;
+    private long deleteConfirmUntil;
 
     public CrateEditorSession(Player player) {
         this.player = player;
@@ -96,6 +97,7 @@ public final class CrateEditorSession {
         this.titleFadeIn           = d.titleFadeIn();
         this.titleStay             = d.titleStay();
         this.titleFadeOut          = d.titleFadeOut();
+        this.deleteConfirmUntil    = 0;
     }
 
     public void initNew(String id) {
@@ -129,6 +131,7 @@ public final class CrateEditorSession {
         this.titleFadeIn           = def.titleFadeIn();
         this.titleStay             = def.titleStay();
         this.titleFadeOut          = def.titleFadeOut();
+        this.deleteConfirmUntil    = 0;
     }
 
     public void loadReward(int index) {
@@ -287,4 +290,16 @@ public final class CrateEditorSession {
     public void   rewardLoreOverride(boolean v)     { this.rewardLoreOverride = v; }
     public List<String> rewardCommands()            { return rewardCommands; }
     public void   rewardCommands(List<String> c)    { this.rewardCommands = new ArrayList<>(c); }
+
+    public boolean isDeleteConfirmArmed() {
+        return System.currentTimeMillis() < deleteConfirmUntil;
+    }
+
+    public void armDeleteConfirm() {
+        deleteConfirmUntil = System.currentTimeMillis() + 10_000L;
+    }
+
+    public void clearDeleteConfirm() {
+        deleteConfirmUntil = 0;
+    }
 }

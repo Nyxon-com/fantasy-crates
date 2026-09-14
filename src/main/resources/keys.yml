@@ -1,5 +1,8 @@
 # Aspetto e suoni delle chiavi.
 # L ID sotto keys: deve coincidere col nome file della crate (es. example.yml → example).
+# Per una chiave Nexo usa lo stesso id dell item in Nexo:
+#   item: nexo:item_id
+# Il model Nexo resta. La lore del pack Nexo viene tolta, se vuoi lore tua mettila sotto.
 
 defaults:
   symbol: "✦"
@@ -20,9 +23,7 @@ keys:
     symbol: "✦"
     item: "TRIPWIRE_HOOK"
     glow: true
-    lore:
-      - "<dark_gray>❖ Reliquiario di Valary</dark_gray>"
-      - "<gray>Clic destro sulla crate per aprirla.</gray>"
+    lore: []
     format: "<gold>%symbol%</gold> <yellow>%amount%</yellow> <gray>%crate%</gray>"
     sound:
       given: "ENTITY_PLAYER_LEVELUP"

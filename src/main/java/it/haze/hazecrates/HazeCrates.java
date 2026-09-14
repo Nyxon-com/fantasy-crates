@@ -252,6 +252,9 @@ public final class HazeCrates extends JavaPlugin {
     public void startAnimSession(java.util.UUID uuid, AnimationSession session) {
         animSessions.put(uuid, session);
     }
+    public boolean tryStartAnimSession(java.util.UUID uuid, AnimationSession session) {
+        return animSessions.putIfAbsent(uuid, session) == null;
+    }
     public AnimationSession takeAnimSession(java.util.UUID uuid) {
         return animSessions.remove(uuid);
     }

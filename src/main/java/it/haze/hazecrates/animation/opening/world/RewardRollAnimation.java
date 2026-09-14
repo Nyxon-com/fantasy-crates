@@ -45,6 +45,7 @@ public final class RewardRollAnimation implements CrateAnimation {
 
         Location hover = location.clone().add(0, 1.35, 0);
         ItemDisplay display = WorldOpeningSupport.spawnItem(hover, pool.get(0).icon(), 0.7f, false);
+        WorldOpeningSupport.facePlayer(display, player);
         ArmorStand name = WorldOpeningSupport.spawnName(hover.clone().add(0, 0.45, 0), pool.get(0));
         AnimationSession session = WorldOpeningSupport.begin(plugin, player, reveal);
         int maxSpins = Math.max(16, template.duration() / 3);
@@ -63,6 +64,7 @@ public final class RewardRollAnimation implements CrateAnimation {
                 }
 
                 ticks++;
+                WorldOpeningSupport.facePlayer(display, player);
                 WorldOpeningSupport.ring(hover.getWorld(), hover, template.particle(), 0.55, 8);
 
                 if (linger >= 0) {

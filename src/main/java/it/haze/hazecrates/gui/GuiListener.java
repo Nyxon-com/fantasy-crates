@@ -133,6 +133,12 @@ public final class GuiListener implements Listener {
     }
 
     private boolean applyCursorItem(Player player, CrateEditorSession session, int slot, ItemStack cursor) {
+        if (session.currentPage() == CrateEditorSession.Page.CRATE_EDITOR
+                && slot == CrateEditorGui.SLOT_KEY_ITEM) {
+            session.keyItemSpec(plugin.externalItems().identify(cursor));
+            CrateEditorGui.open(player, plugin, session);
+            return true;
+        }
         if (session.currentPage() != CrateEditorSession.Page.REWARD_EDITOR
                 || slot != RewardEditorGui.SLOT_MATERIAL) {
             return false;
@@ -167,6 +173,9 @@ public final class GuiListener implements Listener {
     }
 
     private void handleCrateEditor(Player player, CrateEditorSession session, int slot) {
+        if (slot != CrateEditorGui.SLOT_DELETE) {
+            session.clearDeleteConfirm();
+        }
         switch (slot) {
 
             case CrateEditorGui.SLOT_BACK -> {
@@ -176,6 +185,13 @@ public final class GuiListener implements Listener {
             case CrateEditorGui.SLOT_SAVE   -> saveCrate(player, session);
             case CrateEditorGui.SLOT_DELETE -> {
                 String crateId = session.crateId();
+                if (!session.isDeleteConfirmArmed()) {
+                    session.armDeleteConfirm();
+                    plugin.messages().send(player, "delete-confirm", Map.of("crate", crateId));
+                    CrateEditorGui.open(player, plugin, session);
+                    return;
+                }
+                session.clearDeleteConfirm();
                 boolean deleted = plugin.crateWriter().delete(crateId);
                 plugin.messages().send(player, deleted ? "crate-deleted" : "unknown-crate",
                         Map.of("crate", crateId));
@@ -211,7 +227,7 @@ public final class GuiListener implements Listener {
             case CrateEditorGui.SLOT_KEY_ITEM ->
                 ChatInputGui.open(player, plugin, "Key Item",
                         session.keyItemSpec() != null ? session.keyItemSpec().serialize() : "TRIPWIRE_HOOK",
-                        List.of("TRIPWIRE_HOOK", "NAME_TAG", "GOLD_NUGGET"),
+                        List.of("TRIPWIRE_HOOK", "nexo:item_id", "mmoitems:TYPE:ID"),
                         text -> {
                             session.keyItemSpec(ItemSpec.parse(text.trim()));
                             back(player, session);
@@ -545,41 +561,8 @@ public final class GuiListener implements Listener {
 
         if (upper.equals("OPEN_CRATE") || upper.equals("OPEN")) {
             CrateDefinition crate = holder.crate();
-            if (plugin.hasAnimSession(player.getUniqueId())) {
-                return;
-            }
-            if (!player.hasPermission("hazecrates.open." + crate.id())
-                    && !player.hasPermission("hazecrates.open.*")) {
-                plugin.messages().send(player, "no-permission");
-                return;
-            }
-
             player.closeInventory();
-
-            if (crate.keyType() == it.haze.hazecrates.crate.KeyType.LOOTBOX
-                    || crate.keyType() == it.haze.hazecrates.crate.KeyType.PHYSICAL) {
-                boolean found = false;
-                for (ItemStack is : player.getInventory().getContents()) {
-                    if (is != null && plugin.keys().isKey(is, crate.id())) {
-                        is.setAmount(is.getAmount() - 1);
-                        found = true;
-                        break;
-                    }
-                }
-                if (found) {
-                    new it.haze.hazecrates.listener.CrateListener(plugin).open(player, crate, player.getLocation());
-                } else {
-                    plugin.messages().send(player, "need-key",
-                            Map.of("crate", crate.displayName(), "type", "PHYSICAL"));
-                }
-            } else {
-                plugin.keys().consumeVirtual(player.getUniqueId(), crate.id())
-                        .whenComplete((ok, err) -> org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
-                            if (err != null) plugin.messages().send(player, "database-error");
-                            else if (!ok)   plugin.messages().send(player, "need-virtual-key", Map.of("crate", crate.displayName()));
-                            else            new it.haze.hazecrates.listener.CrateListener(plugin).open(player, crate, player.getLocation());
-                        }));
-            }
+            new it.haze.hazecrates.listener.CrateListener(plugin).tryOpen(player, crate, player.getLocation(), false);
             return;
         }
 

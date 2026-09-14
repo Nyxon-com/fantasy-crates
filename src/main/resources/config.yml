@@ -18,10 +18,7 @@ database:
 key:
   glow: true
   name: '<gradient:#C9A227:#E8D48B><bold>Chiave %crate%</bold></gradient>'
-  lore:
-    - '<dark_gray>❖ Valary RPG</dark_gray>'
-    - '<gray>Clic destro sulla crate per aprirla.</gray>'
-    - '<dark_gray>Non e un uncino normale: e una chiave.</dark_gray>'
+  lore: []
 
 lootbox:
   name: '<gold>%crate%</gold>'
