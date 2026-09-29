@@ -6,6 +6,7 @@ import it.haze.hazecrates.animation.AnimationRegistry;
 import it.haze.hazecrates.config.MessageService;
 import it.haze.hazecrates.gui.preview.CratePreviewConfig;
 import it.haze.hazecrates.gui.preview.PreviewInventory;
+import it.haze.hazecrates.item.DisplayIcon;
 import it.haze.hazecrates.item.ExternalItemService;
 import it.haze.hazecrates.item.ItemSpec;
 import org.bukkit.Material;
@@ -26,6 +27,7 @@ public final class CrateRegistry {
     public CrateRegistry(HazeCrates plugin) { this.plugin = plugin; }
 
     public void reload() {
+        DisplayIcon.clear();
         PreviewInventory.clearIconCache();
         crates.clear();
         aliases.clear();
@@ -222,6 +224,7 @@ public final class CrateRegistry {
 
                 list.add(new RewardDefinition(rid, spec, icon, commands, weight,
                         perm.equals("null") ? "" : perm, bcast, loreOverride, slot));
+                DisplayIcon.light(icon);
             } catch (Exception e) {
                 plugin.getLogger().warning("Skipping reward in '" + crateId + "': " + e.getMessage());
             }

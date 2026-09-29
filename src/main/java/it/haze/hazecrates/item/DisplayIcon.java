@@ -7,18 +7,39 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Map;
+
 /**
  * Copia visiva per le animazioni. Il premio vero resta l'item completo.
  * Senza lore, attributi e NBT di MMOItems il pacchetto non blocca il client.
+ * La copia è calcolata una volta: rileggere il NBT a ogni frame blocca il tick.
  */
 public final class DisplayIcon {
 
+    private static final Map<ItemStack, ItemStack> CACHE = Collections.synchronizedMap(new IdentityHashMap<>());
+
     private DisplayIcon() {}
+
+    public static void clear() {
+        CACHE.clear();
+    }
 
     public static ItemStack light(ItemStack source) {
         if (source == null || source.getType().isAir()) {
             return new ItemStack(Material.PAPER);
         }
+        ItemStack cached = CACHE.get(source);
+        if (cached != null) {
+            return cached.clone();
+        }
+        ItemStack copy = build(source);
+        CACHE.put(source, copy);
+        return copy.clone();
+    }
+
+    private static ItemStack build(ItemStack source) {
         ItemStack copy = new ItemStack(source.getType(), 1);
         ItemMeta from = source.getItemMeta();
         if (from == null) {
