@@ -18,6 +18,8 @@ import it.haze.hazecrates.item.ExternalItemService;
 import it.haze.hazecrates.item.NexoItemsLoadedListener;
 import it.haze.hazecrates.key.KeyService;
 import it.haze.hazecrates.listener.CrateListener;
+import it.haze.hazecrates.network.CratePacketGuard;
+import it.haze.hazecrates.network.InventoryPacketSlimmer;
 import it.haze.hazecrates.placeholder.HazeCratesExpansion;
 import it.haze.hazecrates.reward.RewardService;
 import it.haze.hazecrates.stats.StatsService;
@@ -42,6 +44,7 @@ public final class HazeCrates extends JavaPlugin {
     private ExternalItemService   externalItems;
     private CratePlacementService placements;
     private CrateDisplayService   display;
+    private CratePacketGuard      packetGuard = CratePacketGuard.NOOP;
     private final java.util.Map<java.util.UUID, AnimationSession> animSessions =
             new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -126,10 +129,20 @@ public final class HazeCrates extends JavaPlugin {
 
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI"))
             new HazeCratesExpansion(this).register();
+
+        if (getServer().getPluginManager().isPluginEnabled("packetevents")) {
+            try {
+                packetGuard = new InventoryPacketSlimmer(this);
+            } catch (Throwable error) {
+                packetGuard = CratePacketGuard.NOOP;
+                getLogger().warning("[HazeCrates] PacketEvents presente ma non agganciato: " + error.getMessage());
+            }
+        }
     }
 
     @Override
     public void onDisable() {
+        if (packetGuard != null) packetGuard.shutdown();
         it.haze.hazecrates.animation.opening.world.support.OpeningProps.clearAll();
         it.haze.hazecrates.animation.opening.world.support.TempOpenChest.restoreAll();
         if (display  != null) display.stopAll();
@@ -253,6 +266,7 @@ public final class HazeCrates extends JavaPlugin {
     public ExternalItemService   externalItems() { return externalItems; }
     public CratePlacementService placements()    { return placements; }
     public CrateDisplayService   display()       { return display; }
+    public CratePacketGuard      packetGuard()   { return packetGuard; }
 
     public void startAnimSession(java.util.UUID uuid, AnimationSession session) {
         animSessions.put(uuid, session);

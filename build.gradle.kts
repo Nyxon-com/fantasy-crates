@@ -21,6 +21,7 @@ dependencies {
     compileOnly("net.Indyuce:MMOItems-API:6.9.5-SNAPSHOT")
     compileOnly("com.github.LoneDev6:API-ItemsAdder:3.6.3-beta-14")
     compileOnly("com.nexomc:nexo:1.16.1")
+    compileOnly(files("../v.0.91/plugins/packetevents-spigot-2.13.0.jar"))
 
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")
 
