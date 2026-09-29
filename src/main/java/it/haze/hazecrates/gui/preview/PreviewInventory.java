@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static it.haze.hazecrates.gui.GuiItems.strip;
 
@@ -24,7 +25,13 @@ public final class PreviewInventory {
 
     public static final String TITLE_PREFIX = "Preview: ";
 
+    private static final Map<String, ItemStack> iconCache = new ConcurrentHashMap<>();
+
     private PreviewInventory() {}
+
+    public static void clearIconCache() {
+        iconCache.clear();
+    }
 
     public static void open(Player player, CrateDefinition crate, HazeCrates plugin) {
         open(player, crate, plugin, 1);
@@ -134,7 +141,7 @@ public final class PreviewInventory {
         }
 
         for (RewardDefinition r : fixedRewards) {
-            inv.setItem(r.previewSlot(), buildRewardIcon(r, totalWeight, plugin, preview.rewardLore()));
+            inv.setItem(r.previewSlot(), buildRewardIcon(crate, r, totalWeight, plugin, preview.rewardLore()));
         }
 
         List<Integer> placed = centerInGrid(availableRewardSlots, pageRewards.size());
@@ -142,7 +149,7 @@ public final class PreviewInventory {
             int slot = availableRewardSlots.get(i);
             int placedAt = placed.indexOf(slot);
             if (placedAt >= 0 && placedAt < pageRewards.size()) {
-                inv.setItem(slot, buildRewardIcon(pageRewards.get(placedAt), totalWeight, plugin, preview.rewardLore()));
+                inv.setItem(slot, buildRewardIcon(crate, pageRewards.get(placedAt), totalWeight, plugin, preview.rewardLore()));
             } else if (preview.rewardSlots().contains(slot)) {
                 inv.setItem(slot, PreviewTheme.socket());
             }
@@ -215,7 +222,12 @@ public final class PreviewInventory {
         return placed;
     }
 
-    private static ItemStack buildRewardIcon(RewardDefinition r, int totalWeight, HazeCrates plugin, List<String> customLoreTemplate) {
+    private static ItemStack buildRewardIcon(CrateDefinition crate, RewardDefinition r, int totalWeight, HazeCrates plugin, List<String> customLoreTemplate) {
+        String cacheKey = crate.id() + '\0' + r.id() + '\0' + totalWeight;
+        ItemStack cached = iconCache.get(cacheKey);
+        if (cached != null) {
+            return cached.clone();
+        }
         ItemStack item = r.icon().clone();
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
@@ -240,6 +252,7 @@ public final class PreviewInventory {
         meta.lore(lore);
         item.setItemMeta(meta);
         PreviewTheme.silence(item);
+        iconCache.put(cacheKey, item.clone());
         return item;
     }
 

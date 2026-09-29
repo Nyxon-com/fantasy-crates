@@ -5,6 +5,7 @@ import it.haze.hazecrates.HazeCrates;
 import it.haze.hazecrates.animation.AnimationRegistry;
 import it.haze.hazecrates.config.MessageService;
 import it.haze.hazecrates.gui.preview.CratePreviewConfig;
+import it.haze.hazecrates.gui.preview.PreviewInventory;
 import it.haze.hazecrates.item.ExternalItemService;
 import it.haze.hazecrates.item.ItemSpec;
 import org.bukkit.Material;
@@ -25,6 +26,7 @@ public final class CrateRegistry {
     public CrateRegistry(HazeCrates plugin) { this.plugin = plugin; }
 
     public void reload() {
+        PreviewInventory.clearIconCache();
         crates.clear();
         aliases.clear();
         File dir = new File(plugin.getDataFolder(), "crates");
