@@ -87,10 +87,11 @@ public final class CsgoScrollAnimation implements CrateAnimation {
                 row.add(0, spins == plantSpin ? reward : GuiOpeningSupport.pickFiller(pool, reward, rng));
 
                 boolean stopped = spins >= maxSpins;
-                player.playSound(player.getLocation(), template.sound(), 0.35f, 1.4f - spins * 0.02f);
-                paintFrame(inventory, stopped);
+                player.playSound(player, template.sound(), 0.35f, 1.4f - spins * 0.02f);
                 paintRow(inventory, row, stopped);
                 if (stopped) {
+                    inventory.setItem(4, GuiOpeningTheme.winPointer());
+                    inventory.setItem(22, GuiOpeningTheme.winPointer());
                     linger = 0;
                 }
             }
@@ -120,7 +121,7 @@ public final class CsgoScrollAnimation implements CrateAnimation {
             if (won && i == CENTER) {
                 icon = GuiOpeningTheme.glow(icon);
             }
-            inventory.setItem(STRIP[i], icon);
+            GuiOpeningTheme.show(inventory, STRIP[i], icon);
         }
     }
 }

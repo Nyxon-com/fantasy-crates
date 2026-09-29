@@ -111,6 +111,8 @@ public final class LootboxOpenAnimation implements CrateAnimation {
                         ItemDisplay orb = WorldOpeningSupport.spawnItem(
                                 origin.clone(), shown.get(spawned).icon(), 0.42f, false);
                         orb.setBillboard(Display.Billboard.CENTER);
+                        orb.setInterpolationDelay(0);
+                        orb.setInterpolationDuration(4);
                         orbs[spawned] = orb;
                         origin.getWorld().spawnParticle(
                                 Particle.CRIT, origin.clone().add(0, 0.5, 0), 8, 0.1, 0.15, 0.1, 0.02);
@@ -121,7 +123,7 @@ public final class LootboxOpenAnimation implements CrateAnimation {
                     }
                 }
 
-                if ((ticks & 1) == 0) {
+                if ((ticks & 3) == 0) {
                     spinOrbs();
                 }
 

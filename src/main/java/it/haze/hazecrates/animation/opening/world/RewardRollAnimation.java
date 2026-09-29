@@ -54,6 +54,7 @@ public final class RewardRollAnimation implements CrateAnimation {
             int ticks = 0;
             int spins = 0;
             int linger = -1;
+            final RewardDefinition[] last = {pool.get(0)};
 
             @Override
             public void run() {
@@ -90,9 +91,12 @@ public final class RewardRollAnimation implements CrateAnimation {
                 spins++;
                 if (spins < maxSpins) {
                     RewardDefinition shown = GuiOpeningSupport.pickFiller(pool, reward, rng);
-                    display.setItemStack(DisplayIcon.light(shown.icon()));
-                    name.customName(shown.displayComponent());
-                    player.playSound(player.getLocation(), template.sound(), 0.4f, 1.3f - spins * 0.02f);
+                    if (shown != last[0]) {
+                        last[0] = shown;
+                        display.setItemStack(DisplayIcon.light(shown.icon()));
+                        name.customName(shown.displayComponent());
+                    }
+                    player.playSound(player, template.sound(), 0.4f, 1.3f - spins * 0.02f);
                     return;
                 }
 

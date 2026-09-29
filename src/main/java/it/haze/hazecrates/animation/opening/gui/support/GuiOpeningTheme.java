@@ -58,6 +58,14 @@ public final class GuiOpeningTheme {
         }
     }
 
+    public static void show(Inventory inventory, int slot, ItemStack item) {
+        ItemStack current = inventory.getItem(slot);
+        if (current != null && current.isSimilar(item)) {
+            return;
+        }
+        inventory.setItem(slot, item);
+    }
+
     public static ItemStack glow(ItemStack source) {
         ItemStack item = source.clone();
         ItemMeta meta = item.getItemMeta();
