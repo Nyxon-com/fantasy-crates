@@ -4,7 +4,6 @@ package it.haze.hazecrates.gui.preview;
 import it.haze.hazecrates.HazeCrates;
 import it.haze.hazecrates.crate.CrateDefinition;
 import it.haze.hazecrates.crate.RewardDefinition;
-import it.haze.hazecrates.item.DisplayIcon;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -229,11 +228,13 @@ public final class PreviewInventory {
         if (cached != null) {
             return cached.clone();
         }
-        ItemStack item = DisplayIcon.light(r.icon());
+        ItemStack item = r.icon().clone();
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
 
-        List<Component> lore = new ArrayList<>();
+        List<Component> lore = meta.lore() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(meta.lore());
 
         List<String> extra = PreviewFormat.rewardLoreLines(
                 plugin, r.weight(), totalWeight, r.id(), r.permission(), customLoreTemplate);
