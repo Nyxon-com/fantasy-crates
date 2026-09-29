@@ -2,7 +2,7 @@ name: HazeCrates
 version: ${version}
 main: it.haze.hazecrates.HazeCrates
 api-version: '1.21'
-softdepend: [PlaceholderAPI, Vault, MMOItems, ItemsAdder, Nexo]
+softdepend: [PlaceholderAPI, Vault, MMOItems, ItemsAdder, Nexo, packetevents]
 commands:
   crate:
     description: HazeCrates
