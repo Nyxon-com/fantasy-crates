@@ -18,9 +18,16 @@ public final class GuiOpeningSupport {
     private GuiOpeningSupport() {}
 
     public static AnimationSession begin(HazeCrates plugin, Player player, Inventory inventory, Runnable reveal) {
+        PlayerStorageMask.hide(plugin, player);
         AnimationSession session = new AnimationSession(inventory, reveal);
         plugin.startAnimSession(player.getUniqueId(), session);
-        player.openInventory(inventory);
+        try {
+            player.openInventory(inventory);
+        } catch (RuntimeException ex) {
+            plugin.takeAnimSession(player.getUniqueId());
+            PlayerStorageMask.restore(player);
+            throw ex;
+        }
         return session;
     }
 
@@ -33,13 +40,17 @@ public final class GuiOpeningSupport {
             float volume,
             float pitch
     ) {
+        session.cancelTask();
         plugin.takeAnimSession(player.getUniqueId());
+        if (player.isOnline()) {
+            player.closeInventory();
+        }
+        PlayerStorageMask.restore(player);
         if (session.finish()) {
             reveal.run();
         }
         if (player.isOnline()) {
-            player.closeInventory();
-            player.playSound(player.getLocation(), finalSound, volume, pitch);
+            player.playSound(player, finalSound, volume, pitch);
         }
     }
 
@@ -62,6 +73,13 @@ public final class GuiOpeningSupport {
     }
 
     public static boolean aborted(Player player, AnimationSession session) {
-        return !player.isOnline() || session.isFinished();
+        if (player.isOnline() && !session.isFinished()) {
+            return false;
+        }
+        session.cancelTask();
+        if (!player.isOnline()) {
+            PlayerStorageMask.restore(player);
+        }
+        return true;
     }
 }

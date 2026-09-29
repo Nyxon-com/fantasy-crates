@@ -57,7 +57,7 @@ public final class CsgoScrollAnimation implements CrateAnimation {
 
         int plantSpin = maxSpins - CENTER;
 
-        new BukkitRunnable() {
+        BukkitRunnable task = new BukkitRunnable() {
             int ticks = 0;
             int spins = 0;
             int linger = -1;
@@ -95,7 +95,8 @@ public final class CsgoScrollAnimation implements CrateAnimation {
                     linger = 0;
                 }
             }
-        }.runTaskTimer(plugin, 2L, 1L);
+        };
+        session.bind(task.runTaskTimer(plugin, 2L, 1L));
     }
 
     private static int interval(int spins) {
