@@ -35,13 +35,11 @@ public final class GuiOpeningSupport {
     ) {
         session.cancelTask();
         plugin.takeAnimSession(player.getUniqueId());
-        if (session.finish()) {
-            reveal.run();
-        }
         if (player.isOnline()) {
             player.closeInventory();
             player.playSound(player, finalSound, volume, pitch);
         }
+        session.scheduleGrant(plugin);
     }
 
     public static List<RewardDefinition> pool(CrateDefinition crate) {

@@ -6,16 +6,15 @@ import it.haze.hazecrates.animation.AnimationSession;
 import it.haze.hazecrates.animation.AnimationTemplate;
 import it.haze.hazecrates.animation.CrateAnimation;
 import it.haze.hazecrates.animation.opening.gui.support.GuiOpeningSupport;
-import it.haze.hazecrates.animation.opening.world.support.OpeningProps;
-import it.haze.hazecrates.animation.opening.world.support.WorldOpeningSupport;
+import it.haze.hazecrates.animation.opening.gui.support.GuiOpeningTheme;
 import it.haze.hazecrates.crate.CrateDefinition;
 import it.haze.hazecrates.crate.RewardDefinition;
 import it.haze.hazecrates.item.DisplayIcon;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,7 +23,8 @@ import java.util.Random;
 
 public final class RouletteSpinAnimation implements CrateAnimation {
 
-    private static final int COUNT = 8;
+    private static final int[] RING = {4, 5, 15, 23, 22, 21, 11, 3};
+    private static final int POINTER = 13;
 
     private final HazeCrates plugin;
     private final AnimationTemplate template;
@@ -36,46 +36,24 @@ public final class RouletteSpinAnimation implements CrateAnimation {
     }
 
     @Override
-    public boolean isWorldAnimation() {
-        return true;
-    }
-
-    @Override
     public void play(Player player, Location location, CrateDefinition crate, RewardDefinition reward, Runnable reveal) {
         List<RewardDefinition> pool = GuiOpeningSupport.pool(crate);
-        if (pool.isEmpty() || !WorldOpeningSupport.chunkReady(player.getLocation())) {
+        if (pool.isEmpty()) {
             reveal.run();
             return;
         }
 
-        List<RewardDefinition> ring = new ArrayList<>(COUNT);
-        for (int i = 0; i < COUNT; i++) {
+        List<RewardDefinition> ring = new ArrayList<>(RING.length);
+        for (int i = 0; i < RING.length; i++) {
             ring.add(GuiOpeningSupport.pickFiller(pool, reward, rng));
         }
 
-        Location eye = player.getEyeLocation();
-        Vector forward = eye.getDirection().setY(0);
-        if (forward.lengthSquared() < 1.0E-4) {
-            forward = new Vector(0, 0, 1);
-        }
-        forward.normalize();
-        Vector right = new Vector(-forward.getZ(), 0, forward.getX());
-        Location center = eye.clone().add(forward.clone().multiply(2.0)).add(0, -0.2, 0);
-
-        ItemDisplay[] shown = new ItemDisplay[COUNT];
-        for (int i = 0; i < COUNT; i++) {
-            double angle = (Math.PI * 2 / COUNT) * i;
-            Location at = center.clone()
-                    .add(right.clone().multiply(Math.cos(angle) * 1.15))
-                    .add(0, Math.sin(angle) * 0.55, 0);
-            ItemDisplay display = WorldOpeningSupport.spawnItem(at, ring.get(i).icon(), 0.35f, false);
-            display.setPersistent(false);
-            OpeningProps.track(player.getUniqueId(), display);
-            shown[i] = display;
-        }
-
-        AnimationSession session = WorldOpeningSupport.begin(plugin, player, reveal);
-        int maxSpins = Math.max(12, template.duration() / 3);
+        Inventory inventory = Bukkit.createInventory(null, 27, GuiOpeningTheme.openingTitle());
+        GuiOpeningTheme.fillAll(inventory);
+        inventory.setItem(POINTER, GuiOpeningTheme.pointer());
+        paintRing(inventory, ring, false);
+        AnimationSession session = GuiOpeningSupport.begin(plugin, player, inventory, reveal);
+        int maxSpins = Math.max(20, template.duration() / 2);
 
         BukkitRunnable task = new BukkitRunnable() {
             int ticks = 0;
@@ -84,13 +62,15 @@ public final class RouletteSpinAnimation implements CrateAnimation {
 
             @Override
             public void run() {
-                if (!player.isOnline() || session.isFinished()) {
-                    finish(false);
+                if (GuiOpeningSupport.aborted(player, session)) {
+                    cancel();
                     return;
                 }
                 if (linger >= 0) {
-                    if (++linger >= 16) {
-                        finish(true);
+                    if (++linger >= 6) {
+                        GuiOpeningSupport.complete(plugin, player, session, reveal,
+                                template.finalSound(), template.volume(), template.pitch());
+                        cancel();
                     }
                     return;
                 }
@@ -104,45 +84,34 @@ public final class RouletteSpinAnimation implements CrateAnimation {
                 if (spins < maxSpins) {
                     Collections.rotate(ring, 1);
                     ring.set(0, GuiOpeningSupport.pickFiller(pool, reward, rng));
-                } else {
-                    ring.set(0, reward);
-                    if (shown[0] != null) {
-                        shown[0].setGlowing(true);
-                    }
-                    linger = 0;
+                    player.playSound(player, template.sound(), 0.35f, 0.9f + spins * 0.02f);
+                    paintRing(inventory, ring, false);
+                    return;
                 }
-                paint();
-                player.playSound(player, template.sound(), 0.35f, 0.9f + spins * 0.02f);
-            }
 
-            private void paint() {
-                for (int i = 0; i < COUNT; i++) {
-                    if (shown[i] != null && shown[i].isValid()) {
-                        shown[i].setItemStack(DisplayIcon.light(ring.get(i).icon()));
-                    }
-                }
-                player.sendActionBar(DisplayIcon.visibleName(ring.get(0).icon()));
-            }
-
-            private void finish(boolean celebrate) {
-                OpeningProps.clear(player.getUniqueId());
-                plugin.takeAnimSession(player.getUniqueId());
-                cancel();
-                if (session.finish()) {
-                    reveal.run();
-                }
-                if (celebrate && player.isOnline()) {
-                    player.sendActionBar(DisplayIcon.visibleName(reward.icon()));
-                    player.playSound(player, template.finalSound(), template.volume(), template.pitch());
-                }
+                ring.set(0, reward);
+                inventory.setItem(POINTER, GuiOpeningTheme.winPointer());
+                paintRing(inventory, ring, true);
+                linger = 0;
             }
         };
-        session.bind(task.runTaskTimer(plugin, 2L, 2L));
+        session.bind(task.runTaskTimer(plugin, 3L, 3L));
     }
 
     private static int interval(int spins) {
-        if (spins < 8) return 1;
-        if (spins < 12) return 2;
-        return 3;
+        if (spins < 12) return 1;
+        if (spins < 18) return 2;
+        if (spins < 22) return 3;
+        return 5;
+    }
+
+    private static void paintRing(Inventory inventory, List<RewardDefinition> ring, boolean won) {
+        for (int i = 0; i < RING.length; i++) {
+            var icon = DisplayIcon.light(ring.get(i).icon());
+            if (won && i == 0) {
+                icon = GuiOpeningTheme.glow(icon);
+            }
+            GuiOpeningTheme.show(inventory, RING[i], icon);
+        }
     }
 }

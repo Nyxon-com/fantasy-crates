@@ -33,6 +33,16 @@ public final class AnimationSession {
         }
     }
 
+    public boolean scheduleGrant(org.bukkit.plugin.Plugin plugin) {
+        if (!granted.compareAndSet(false, true)) {
+            return false;
+        }
+        if (reveal != null) {
+            plugin.getServer().getScheduler().runTask(plugin, reveal);
+        }
+        return true;
+    }
+
     public boolean finish() {
         return granted.compareAndSet(false, true);
     }
