@@ -36,14 +36,29 @@ public final class InventoryPacketSlimmer extends PacketListenerAbstract impleme
     private static final int SAFETY_DELAY_TICKS = 30 * 20;
     private static final int PLAYER_SLOTS = 36;
 
-    private static final ComponentType<?>[] KEPT = {
-            ComponentTypes.CUSTOM_NAME,
-            ComponentTypes.ITEM_NAME,
-            ComponentTypes.ITEM_MODEL,
-            ComponentTypes.CUSTOM_MODEL_DATA,
-            ComponentTypes.CUSTOM_MODEL_DATA_LISTS,
-            ComponentTypes.ENCHANTMENT_GLINT_OVERRIDE,
-            ComponentTypes.DYED_COLOR
+    private static final ComponentType<?>[] DROP = {
+            ComponentTypes.CUSTOM_DATA,
+            ComponentTypes.LORE,
+            ComponentTypes.ATTRIBUTE_MODIFIERS,
+            ComponentTypes.ENCHANTMENTS,
+            ComponentTypes.STORED_ENCHANTMENTS,
+            ComponentTypes.PROFILE,
+            ComponentTypes.ENTITY_DATA,
+            ComponentTypes.TYPED_ENTITY_DATA,
+            ComponentTypes.BUCKET_ENTITY_DATA,
+            ComponentTypes.BLOCK_ENTITY_DATA,
+            ComponentTypes.TYPED_BLOCK_ENTITY_DATA,
+            ComponentTypes.CONTAINER,
+            ComponentTypes.BUNDLE_CONTENTS,
+            ComponentTypes.CHARGED_PROJECTILES,
+            ComponentTypes.POTION_CONTENTS,
+            ComponentTypes.WRITTEN_BOOK_CONTENT,
+            ComponentTypes.WRITABLE_BOOK_CONTENT,
+            ComponentTypes.FIREWORKS,
+            ComponentTypes.FIREWORK_EXPLOSION,
+            ComponentTypes.CAN_PLACE_ON,
+            ComponentTypes.CAN_BREAK,
+            ComponentTypes.RECIPES
     };
 
     private final HazeCrates plugin;
@@ -194,46 +209,27 @@ public final class InventoryPacketSlimmer extends PacketListenerAbstract impleme
         event.markForReEncode(true);
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
     private static ItemStack slim(ItemStack source) {
-        if (source == null || source.isEmpty()) {
+        if (source == null || source.isEmpty() || !source.hasComponentPatches()) {
             return source;
         }
-        ItemStack.Builder builder = ItemStack.builder()
-                .type(source.getType())
-                .amount(Math.max(1, source.getAmount()))
-                .version(source.getVersion())
-                .registryHolder(source.getRegistryHolder());
-        boolean extra = false;
-        for (ComponentType type : KEPT) {
-            if (!source.hasComponent(type)) {
-                continue;
-            }
-            Object value = source.getComponent(type).orElse(null);
-            if (value != null) {
-                builder.component(type, value);
-            }
-        }
-        if (source.hasComponentPatches()) {
-            extra = source.getComponents().getPatches().size() > keptCount(source);
-        }
-        if (!extra && !source.hasComponentPatches()) {
-            return source;
-        }
-        if (!extra) {
-            return source;
-        }
-        return builder.build();
-    }
-
-    private static int keptCount(ItemStack source) {
-        int count = 0;
-        for (ComponentType<?> type : KEPT) {
+        boolean heavy = false;
+        for (ComponentType<?> type : DROP) {
             if (source.hasComponent(type)) {
-                count++;
+                heavy = true;
+                break;
             }
         }
-        return count;
+        if (!heavy) {
+            return source;
+        }
+        ItemStack copy = source.copy();
+        for (ComponentType<?> type : DROP) {
+            if (copy.hasComponent(type)) {
+                copy.unsetComponent(type);
+            }
+        }
+        return copy;
     }
 
     private boolean passthrough(UUID id) {
