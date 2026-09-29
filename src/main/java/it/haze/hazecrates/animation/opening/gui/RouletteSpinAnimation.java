@@ -55,7 +55,7 @@ public final class RouletteSpinAnimation implements CrateAnimation {
         AnimationSession session = GuiOpeningSupport.begin(plugin, player, inventory, reveal);
         int maxSpins = Math.max(20, template.duration() / 2);
 
-        new BukkitRunnable() {
+        BukkitRunnable task = new BukkitRunnable() {
             int ticks = 0;
             int spins = 0;
             int linger = -1;
@@ -94,7 +94,8 @@ public final class RouletteSpinAnimation implements CrateAnimation {
                 paintRing(inventory, ring, true);
                 linger = 0;
             }
-        }.runTaskTimer(plugin, 2L, 1L);
+        };
+        session.bind(task.runTaskTimer(plugin, 2L, 1L));
     }
 
     private static int interval(int spins) {

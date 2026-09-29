@@ -2,6 +2,8 @@
 package it.haze.hazecrates.animation;
 
 import org.bukkit.inventory.Inventory;
+import org.bukkit.scheduler.BukkitTask;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class AnimationSession {
@@ -9,6 +11,7 @@ public final class AnimationSession {
     private final Inventory inventory;
     private final Runnable reveal;
     private final AtomicBoolean granted = new AtomicBoolean(false);
+    private BukkitTask task;
 
     public AnimationSession(Inventory inventory, Runnable reveal) {
         this.inventory = inventory;
@@ -16,6 +19,19 @@ public final class AnimationSession {
     }
 
     public Inventory inventory() { return inventory; }
+
+    public void bind(BukkitTask task) {
+        cancelTask();
+        this.task = task;
+    }
+
+    public void cancelTask() {
+        BukkitTask current = this.task;
+        this.task = null;
+        if (current != null) {
+            current.cancel();
+        }
+    }
 
     public boolean finish() {
         return granted.compareAndSet(false, true);

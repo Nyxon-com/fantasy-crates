@@ -176,8 +176,21 @@ public final class CrateListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        it.haze.hazecrates.animation.opening.gui.support.PlayerStorageMask.restore(event.getPlayer());
         var session = plugin.takeAnimSession(event.getPlayer().getUniqueId());
         if (session != null) {
+            session.cancelTask();
+            session.grantIfPending();
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onDeath(org.bukkit.event.entity.PlayerDeathEvent event) {
+        org.bukkit.entity.Player player = event.getEntity();
+        it.haze.hazecrates.animation.opening.gui.support.PlayerStorageMask.restore(player);
+        var session = plugin.takeAnimSession(player.getUniqueId());
+        if (session != null) {
+            session.cancelTask();
             session.grantIfPending();
         }
     }
