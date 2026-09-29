@@ -455,7 +455,6 @@ public final class GuiListener implements Listener {
                 plugin.startAnimSession(player.getUniqueId(), animSession);
             } else if (event.getInventory().equals(animSession.inventory())) {
                 animSession.cancelTask();
-                it.haze.hazecrates.animation.opening.gui.support.PlayerStorageMask.restore(player);
                 animSession.grantIfPending();
             } else {
                 plugin.startAnimSession(player.getUniqueId(), animSession);
