@@ -27,7 +27,7 @@ public final class CrateCommand implements CommandExecutor, TabCompleter {
     private static final String USAGE_LOOTBOX = "/crate lootbox <giocatore> <crate> [quantita]";
     private static final String USAGE_ITEM = "/crate item <crate> [quantita]";
     private static final String USAGE_PLACE = "/crate place <crate>";
-    private static final String USAGE_PREVIEW = "/crate preview <crate>";
+    private static final String USAGE_PREVIEW = "/crate preview [giocatore] <crate>";
     private static final String USAGE_OPEN = "/crate open [giocatore] <crate>";
     private static final String USAGE_OPEN_SELF = "/open [giocatore] <crate>";
 
@@ -89,6 +89,24 @@ public final class CrateCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean preview(CommandSender sender, String[] args) {
+        if (args.length >= 2) {
+            if (!sender.hasPermission("hazecrates.admin")) {
+                CommandSupport.fail(plugin, sender, "no-permission", Map.of());
+                return true;
+            }
+            Player target = Bukkit.getPlayerExact(args[0]);
+            if (target == null) {
+                CommandSupport.fail(plugin, sender, "player-not-found", Map.of("player", args[0]));
+                return true;
+            }
+            CrateDefinition crate = plugin.crates().find(args[1]);
+            if (crate == null) {
+                CommandSupport.fail(plugin, sender, "unknown-crate", Map.of("crate", args[1]));
+                return true;
+            }
+            PreviewInventory.open(target, crate, plugin);
+            return true;
+        }
         if (!(sender instanceof Player player)) {
             CommandSupport.usage(plugin, sender, USAGE_PREVIEW);
             return true;
@@ -283,7 +301,16 @@ public final class CrateCommand implements CommandExecutor, TabCompleter {
             if (args.length == 4) return CommandSupport.filter(args[3], CommandSupport.amounts());
             return List.of();
         }
-        if (action.equals("item") || action.equals("place") || action.equals("preview")) {
+        if (action.equals("preview")) {
+            if (args.length == 2) {
+                List<String> names = new java.util.ArrayList<>(CommandSupport.playerNames());
+                names.addAll(plugin.crates().tabIds());
+                return CommandSupport.filter(args[1], names);
+            }
+            if (args.length == 3) return CommandSupport.filter(args[2], plugin.crates().tabIds());
+            return List.of();
+        }
+        if (action.equals("item") || action.equals("place")) {
             if (args.length == 2) return CommandSupport.filter(args[1], plugin.crates().tabIds());
             if (action.equals("item") && args.length == 3) return CommandSupport.filter(args[2], CommandSupport.amounts());
             return List.of();
