@@ -110,6 +110,7 @@ public final class HazeCrates extends JavaPlugin {
         messages.reload();
         animations.reload();
         crates.reload();
+        keys.reload();
 
         if (!itemsAdderPending && !nexoPending) {
             externalPluginsReady = true;
@@ -144,6 +145,7 @@ public final class HazeCrates extends JavaPlugin {
         messages.reload();
         animations.reload();
         crates.reload();
+        keys.reload();
         startDisplay();
     }
 
@@ -158,6 +160,7 @@ public final class HazeCrates extends JavaPlugin {
             externalPluginsReady = true;
             getLogger().info("[HazeCrates] " + reason + " – refreshing crate items.");
             crates.reload();
+            keys.reload();
             startDisplay();
         }, delay);
     }
@@ -176,6 +179,7 @@ public final class HazeCrates extends JavaPlugin {
         }
         getLogger().info("[HazeCrates] " + source + " data loaded.");
         crates.reload();
+        keys.reload();
         if (itemsAdderPending || nexoPending) {
             getLogger().info("[HazeCrates] Waiting for remaining item plugins before starting displays.");
             return;

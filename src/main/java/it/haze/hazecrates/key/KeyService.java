@@ -32,6 +32,12 @@ public final class KeyService {
 
     private final ConcurrentMap<String, Integer> memKeys = new ConcurrentHashMap<>();
 
+    private final ConcurrentMap<String, ItemSpec> specCache = new ConcurrentHashMap<>();
+
+    private final ConcurrentMap<String, Material> materialCache = new ConcurrentHashMap<>();
+
+    private org.bukkit.configuration.file.YamlConfiguration keysYml;
+
     public KeyService(HazeCrates plugin, DatabaseService database) {
         this.plugin   = plugin;
         this.database = database;
@@ -40,10 +46,25 @@ public final class KeyService {
         this.crateItemTag = new NamespacedKey(plugin, "crate_item");
     }
 
+    public void reload() {
+        synchronized (this) {
+            keysYml = null;
+        }
+        specCache.clear();
+        materialCache.clear();
+        keysConfig();
+    }
+
     public org.bukkit.configuration.file.YamlConfiguration keysConfig() {
-        java.io.File file = new java.io.File(plugin.getDataFolder(), "keys.yml");
-        if (!file.exists()) plugin.saveResource("keys.yml", false);
-        return org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file);
+        org.bukkit.configuration.file.YamlConfiguration loaded = keysYml;
+        if (loaded != null) return loaded;
+        synchronized (this) {
+            if (keysYml != null) return keysYml;
+            java.io.File file = new java.io.File(plugin.getDataFolder(), "keys.yml");
+            if (!file.exists()) plugin.saveResource("keys.yml", false);
+            keysYml = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file);
+            return keysYml;
+        }
     }
 
     public ItemStack createPhysical(CrateDefinition crate, int amount) {
@@ -126,19 +147,23 @@ public final class KeyService {
     }
 
     public boolean isKey(ItemStack item, String crateId) {
-        if (item == null || !item.hasItemMeta()) return false;
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta.getPersistentDataContainer().has(keyTag, PersistentDataType.BYTE)
-                && crateId.equalsIgnoreCase(
-                        meta.getPersistentDataContainer().get(crateTag, PersistentDataType.STRING)))
-            return true;
-
+        if (item == null || item.getType().isAir()) return false;
         CrateDefinition crate = plugin.crates().get(crateId);
-        if (crate != null && crate.keyType() == it.haze.hazecrates.crate.KeyType.LOOTBOX
-                && crateId.equalsIgnoreCase(
-                        meta.getPersistentDataContainer().get(crateItemTag, PersistentDataType.STRING))) {
-            return true;
+        if (crate != null) {
+            Material expected = expectedMaterial(crate);
+            if (expected != null && item.getType() != expected) return false;
+        }
+        if (!item.hasItemMeta()) return false;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+        var pdc = meta.getPersistentDataContainer();
+
+        if (pdc.has(keyTag, PersistentDataType.BYTE)) {
+            return crateId.equalsIgnoreCase(pdc.get(crateTag, PersistentDataType.STRING));
+        }
+        String lootboxId = pdc.get(crateItemTag, PersistentDataType.STRING);
+        if (lootboxId != null) {
+            return crateId.equalsIgnoreCase(lootboxId);
         }
         if (crate == null) return false;
         ItemSpec spec = keySpecOf(crate);
@@ -153,11 +178,36 @@ public final class KeyService {
     }
 
     public ItemSpec keySpecOf(CrateDefinition crate) {
-        String overrideItem = keysConfig().getString("keys." + crate.id() + ".item", "");
-        if (overrideItem != null && !overrideItem.isBlank()) {
-            return ItemSpec.parse(overrideItem);
+        return specCache.computeIfAbsent(crate.id(), id -> {
+            String overrideItem = keysConfig().getString("keys." + id + ".item", "");
+            if (overrideItem != null && !overrideItem.isBlank()) {
+                return ItemSpec.parse(overrideItem);
+            }
+            return crate.keySpec();
+        });
+    }
+
+    private Material expectedMaterial(CrateDefinition crate) {
+        Material cached = materialCache.get(crate.id());
+        if (cached != null) return cached;
+        ItemSpec spec = keySpecOf(crate);
+        if (spec.provider() == ItemProvider.VANILLA) {
+            Material mat = Material.matchMaterial(spec.id().toUpperCase(Locale.ROOT));
+            Material resolved = mat != null ? mat : Material.TRIPWIRE_HOOK;
+            materialCache.put(crate.id(), resolved);
+            return resolved;
         }
-        return crate.keySpec();
+        if ((spec.provider() == ItemProvider.NEXO && !plugin.externalItems().isNexoEnabled())
+                || (spec.provider() == ItemProvider.MMOITEMS && !plugin.externalItems().isMmoitemsEnabled())
+                || (spec.provider() == ItemProvider.ITEMSADDER && !plugin.externalItems().isItemsadderEnabled())) {
+            return null;
+        }
+        ItemStack built = plugin.externalItems().resolve(spec);
+        if (built == null || built.getType().isAir() || built.getType() == Material.BARRIER) {
+            return null;
+        }
+        materialCache.put(crate.id(), built.getType());
+        return built.getType();
     }
 
     public void givePhysical(Player player, CrateDefinition crate, int amount) {
