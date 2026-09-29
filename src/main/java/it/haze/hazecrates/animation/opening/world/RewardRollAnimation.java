@@ -9,6 +9,7 @@ import it.haze.hazecrates.animation.opening.gui.support.GuiOpeningSupport;
 import it.haze.hazecrates.animation.opening.world.support.WorldOpeningSupport;
 import it.haze.hazecrates.crate.CrateDefinition;
 import it.haze.hazecrates.crate.RewardDefinition;
+import it.haze.hazecrates.item.DisplayIcon;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.entity.ArmorStand;
@@ -45,7 +46,6 @@ public final class RewardRollAnimation implements CrateAnimation {
 
         Location hover = location.clone().add(0, 1.35, 0);
         ItemDisplay display = WorldOpeningSupport.spawnItem(hover, pool.get(0).icon(), 0.7f, false);
-        WorldOpeningSupport.facePlayer(display, player);
         ArmorStand name = WorldOpeningSupport.spawnName(hover.clone().add(0, 0.45, 0), pool.get(0));
         AnimationSession session = WorldOpeningSupport.begin(plugin, player, reveal);
         int maxSpins = Math.max(16, template.duration() / 3);
@@ -64,8 +64,9 @@ public final class RewardRollAnimation implements CrateAnimation {
                 }
 
                 ticks++;
-                WorldOpeningSupport.facePlayer(display, player);
-                WorldOpeningSupport.ring(hover.getWorld(), hover, template.particle(), 0.55, 8);
+                if (ticks % 4 == 0) {
+                    WorldOpeningSupport.ring(hover.getWorld(), hover, template.particle(), 0.55, 8);
+                }
 
                 if (linger >= 0) {
                     if (++linger >= 20) {
@@ -89,13 +90,13 @@ public final class RewardRollAnimation implements CrateAnimation {
                 spins++;
                 if (spins < maxSpins) {
                     RewardDefinition shown = GuiOpeningSupport.pickFiller(pool, reward, rng);
-                    display.setItemStack(shown.icon());
+                    display.setItemStack(DisplayIcon.light(shown.icon()));
                     name.customName(shown.displayComponent());
                     player.playSound(player.getLocation(), template.sound(), 0.4f, 1.3f - spins * 0.02f);
                     return;
                 }
 
-                display.setItemStack(reward.icon());
+                display.setItemStack(DisplayIcon.light(reward.icon()));
                 display.setGlowing(true);
                 name.customName(reward.displayComponent());
                 hover.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, hover, 18, 0.2, 0.2, 0.2, 0.05);
