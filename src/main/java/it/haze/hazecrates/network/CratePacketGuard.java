@@ -10,6 +10,10 @@ public interface CratePacketGuard {
 
     default void arm(Player player) {}
 
+    default void arm(Player player, int topSlots) {
+        arm(player);
+    }
+
     default void scheduleFlush(Player player) {}
 
     default void disarm(UUID playerId) {}

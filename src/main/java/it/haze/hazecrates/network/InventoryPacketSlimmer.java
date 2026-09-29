@@ -8,12 +8,11 @@ import com.github.retrooper.packetevents.protocol.component.ComponentType;
 import com.github.retrooper.packetevents.protocol.component.ComponentTypes;
 import com.github.retrooper.packetevents.protocol.item.ItemStack;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
-import com.github.retrooper.packetevents.protocol.player.Equipment;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityEquipment;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPlayerInventory;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetSlot;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWindowItems;
 import it.haze.hazecrates.HazeCrates;
+import it.haze.hazecrates.gui.preview.PreviewHolder;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -42,7 +41,6 @@ public final class InventoryPacketSlimmer extends PacketListenerAbstract impleme
             ComponentTypes.ATTRIBUTE_MODIFIERS,
             ComponentTypes.ENCHANTMENTS,
             ComponentTypes.STORED_ENCHANTMENTS,
-            ComponentTypes.PROFILE,
             ComponentTypes.ENTITY_DATA,
             ComponentTypes.TYPED_ENTITY_DATA,
             ComponentTypes.BUCKET_ENTITY_DATA,
@@ -63,6 +61,7 @@ public final class InventoryPacketSlimmer extends PacketListenerAbstract impleme
 
     private final HazeCrates plugin;
     private final Set<UUID> armed = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, Integer> topSlots = new ConcurrentHashMap<>();
     private final Map<UUID, Long> passthroughUntil = new ConcurrentHashMap<>();
     private final Map<UUID, BukkitTask> flushTasks = new ConcurrentHashMap<>();
 
@@ -75,8 +74,14 @@ public final class InventoryPacketSlimmer extends PacketListenerAbstract impleme
 
     @Override
     public void arm(Player player) {
+        arm(player, 27);
+    }
+
+    @Override
+    public void arm(Player player, int slots) {
         UUID id = player.getUniqueId();
         armed.add(id);
+        topSlots.put(id, Math.max(9, slots));
         passthroughUntil.remove(id);
         reschedule(player, SAFETY_DELAY_TICKS);
     }
@@ -92,6 +97,7 @@ public final class InventoryPacketSlimmer extends PacketListenerAbstract impleme
     @Override
     public void disarm(UUID playerId) {
         armed.remove(playerId);
+        topSlots.remove(playerId);
         passthroughUntil.remove(playerId);
         BukkitTask task = flushTasks.remove(playerId);
         if (task != null) {
@@ -121,11 +127,9 @@ public final class InventoryPacketSlimmer extends PacketListenerAbstract impleme
             if (event.getPacketType() == PacketType.Play.Server.WINDOW_ITEMS) {
                 slimWindow(event);
             } else if (event.getPacketType() == PacketType.Play.Server.SET_SLOT) {
-                slimSlot(event);
+                slimSlot(event, id);
             } else if (event.getPacketType() == PacketType.Play.Server.SET_PLAYER_INVENTORY) {
                 slimPlayerSlot(event);
-            } else if (event.getPacketType() == PacketType.Play.Server.ENTITY_EQUIPMENT) {
-                slimEquipment(event, player);
             }
         } catch (Throwable ignored) {
             event.markForReEncode(false);
@@ -162,10 +166,11 @@ public final class InventoryPacketSlimmer extends PacketListenerAbstract impleme
         event.markForReEncode(true);
     }
 
-    private void slimSlot(PacketSendEvent event) {
+    private void slimSlot(PacketSendEvent event, UUID playerId) {
         WrapperPlayServerSetSlot wrapper = new WrapperPlayServerSetSlot(event);
         int windowId = wrapper.getWindowId();
-        if (windowId != 0 && windowId != -1 && wrapper.getSlot() < 27) {
+        int top = topSlots.getOrDefault(playerId, 27);
+        if (windowId != 0 && windowId != -1 && wrapper.getSlot() < top) {
             return;
         }
         ItemStack slim = slim(wrapper.getItem());
@@ -183,29 +188,6 @@ public final class InventoryPacketSlimmer extends PacketListenerAbstract impleme
             return;
         }
         wrapper.setStack(slim);
-        event.markForReEncode(true);
-    }
-
-    private void slimEquipment(PacketSendEvent event, Player player) {
-        WrapperPlayServerEntityEquipment wrapper = new WrapperPlayServerEntityEquipment(event);
-        if (wrapper.getEntityId() != player.getEntityId()) {
-            return;
-        }
-        List<Equipment> list = wrapper.getEquipment();
-        if (list == null || list.isEmpty()) {
-            return;
-        }
-        List<Equipment> copy = new ArrayList<>(list.size());
-        boolean changed = false;
-        for (Equipment piece : list) {
-            ItemStack slim = slim(piece.getItem());
-            changed |= slim != piece.getItem();
-            copy.add(new Equipment(piece.getSlot(), slim));
-        }
-        if (!changed) {
-            return;
-        }
-        wrapper.setEquipment(copy);
         event.markForReEncode(true);
     }
 
@@ -257,10 +239,23 @@ public final class InventoryPacketSlimmer extends PacketListenerAbstract impleme
     private void flush(Player player) {
         UUID id = player.getUniqueId();
         flushTasks.remove(id);
-        if (!armed.remove(id) || !player.isOnline()) {
+        if (!player.isOnline() || !armed.contains(id)) {
             return;
         }
+        if (stillInCrateGui(player)) {
+            reschedule(player, FLUSH_DELAY_TICKS);
+            return;
+        }
+        armed.remove(id);
+        topSlots.remove(id);
         passthroughUntil.put(id, System.nanoTime() + PASSTHROUGH_NANOS);
         player.updateInventory();
+    }
+
+    private boolean stillInCrateGui(Player player) {
+        if (plugin.hasAnimSession(player.getUniqueId())) {
+            return true;
+        }
+        return player.getOpenInventory().getTopInventory().getHolder() instanceof PreviewHolder;
     }
 }
