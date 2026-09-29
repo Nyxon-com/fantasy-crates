@@ -1,6 +1,7 @@
 // made by haze
 package it.haze.hazecrates.crate;
 
+import it.haze.hazecrates.item.DisplayIcon;
 import it.haze.hazecrates.item.ItemProvider;
 import it.haze.hazecrates.item.ItemSpec;
 import net.kyori.adventure.text.Component;
@@ -24,13 +25,10 @@ public record RewardDefinition(
     }
 
     public Component displayComponent() {
-        if (icon != null && icon.hasItemMeta() && icon.getItemMeta().hasDisplayName()) {
-            Component name = icon.getItemMeta().displayName();
-            if (name != null) {
-                return name;
-            }
+        if (icon == null || icon.getType().isAir()) {
+            return Component.text(id);
         }
-        return Component.text(id);
+        return DisplayIcon.visibleName(icon);
     }
 
     public String displayName() {

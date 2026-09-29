@@ -49,7 +49,9 @@ public final class RouletteSpinAnimation implements CrateAnimation {
         }
 
         Inventory inventory = Bukkit.createInventory(null, 27, GuiOpeningTheme.openingTitle());
-        paint(inventory, ring, false);
+        GuiOpeningTheme.fillAll(inventory);
+        inventory.setItem(POINTER, GuiOpeningTheme.pointer());
+        paintRing(inventory, ring, false);
         AnimationSession session = GuiOpeningSupport.begin(plugin, player, inventory, reveal);
         int maxSpins = Math.max(20, template.duration() / 2);
 
@@ -82,13 +84,14 @@ public final class RouletteSpinAnimation implements CrateAnimation {
                 if (spins < maxSpins) {
                     Collections.rotate(ring, 1);
                     ring.set(0, GuiOpeningSupport.pickFiller(pool, reward, rng));
-                    player.playSound(player.getLocation(), template.sound(), 0.35f, 0.9f + spins * 0.02f);
-                    paint(inventory, ring, false);
+                    player.playSound(player, template.sound(), 0.35f, 0.9f + spins * 0.02f);
+                    paintRing(inventory, ring, false);
                     return;
                 }
 
                 ring.set(0, reward);
-                paint(inventory, ring, true);
+                inventory.setItem(POINTER, GuiOpeningTheme.winPointer());
+                paintRing(inventory, ring, true);
                 linger = 0;
             }
         }.runTaskTimer(plugin, 2L, 1L);
@@ -101,15 +104,13 @@ public final class RouletteSpinAnimation implements CrateAnimation {
         return 5;
     }
 
-    private static void paint(Inventory inventory, List<RewardDefinition> ring, boolean won) {
-        GuiOpeningTheme.fillAll(inventory);
-        inventory.setItem(POINTER, won ? GuiOpeningTheme.winPointer() : GuiOpeningTheme.pointer());
+    private static void paintRing(Inventory inventory, List<RewardDefinition> ring, boolean won) {
         for (int i = 0; i < RING.length; i++) {
             var icon = DisplayIcon.light(ring.get(i).icon());
             if (won && i == 0) {
                 icon = GuiOpeningTheme.glow(icon);
             }
-            inventory.setItem(RING[i], icon);
+            GuiOpeningTheme.show(inventory, RING[i], icon);
         }
     }
 }
