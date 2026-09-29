@@ -455,7 +455,7 @@ public final class GuiListener implements Listener {
                 plugin.startAnimSession(player.getUniqueId(), animSession);
             } else if (event.getInventory().equals(animSession.inventory())) {
                 animSession.cancelTask();
-                animSession.grantIfPending();
+                animSession.scheduleGrant(plugin);
             } else {
                 plugin.startAnimSession(player.getUniqueId(), animSession);
             }
