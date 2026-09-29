@@ -1,7 +1,7 @@
 # Valary – messages.yml
 # MiniMessage + legacy & codes
 
-prefix: '<dark_gray>[<gradient:#C9A227:#E8D48B><bold>Valary</bold></gradient>]</dark_gray> '
+prefix: '<gradient:#8B5CF6:#EC4899><bold>ᴠᴀʟᴀʀʏʀᴘɢ</bold></gradient><dark_gray>»</dark_gray> <white>ᴄʀᴀᴛᴇ</white> '
 
 no-permission:  '<red>Non hai il permesso per farlo.</red>'
 unknown-crate:  '<red>Crate sconosciuta: <gray>%crate%</gray>.</red>'
