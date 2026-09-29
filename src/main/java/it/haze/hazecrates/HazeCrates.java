@@ -130,7 +130,7 @@ public final class HazeCrates extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        it.haze.hazecrates.animation.opening.gui.support.PlayerStorageMask.restoreAll(getServer());
+        it.haze.hazecrates.animation.opening.world.support.OpeningProps.clearAll();
         it.haze.hazecrates.animation.opening.world.support.TempOpenChest.restoreAll();
         if (display  != null) display.stopAll();
         if (externalRefreshTask != null) {
