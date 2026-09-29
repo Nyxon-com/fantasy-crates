@@ -9,6 +9,8 @@ import it.haze.hazecrates.gui.preview.PreviewHolder;
 import it.haze.hazecrates.gui.preview.PreviewInventory;
 import it.haze.hazecrates.item.ItemProvider;
 import it.haze.hazecrates.item.ItemSpec;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -454,8 +456,9 @@ public final class GuiListener implements Listener {
             if (animSession.inventory() == null) {
                 plugin.startAnimSession(player.getUniqueId(), animSession);
             } else if (event.getInventory().equals(animSession.inventory())) {
-                animSession.cancelTask();
-                animSession.scheduleGrant(plugin);
+                plugin.startAnimSession(player.getUniqueId(), animSession);
+                player.sendActionBar(Component.text("Aspetta la fine dell'apertura", NamedTextColor.GRAY));
+                plugin.getServer().getScheduler().runTask(plugin, () -> reopenAnimation(player, animSession));
             } else {
                 plugin.startAnimSession(player.getUniqueId(), animSession);
             }
@@ -470,6 +473,16 @@ public final class GuiListener implements Listener {
                 plugin.guiManager().removeSession(player);
             }
         });
+    }
+
+    private void reopenAnimation(Player player, it.haze.hazecrates.animation.AnimationSession session) {
+        if (!player.isOnline() || session.isFinished() || !plugin.hasAnimSession(player.getUniqueId())) {
+            return;
+        }
+        if (player.getOpenInventory().getTopInventory().equals(session.inventory())) {
+            return;
+        }
+        player.openInventory(session.inventory());
     }
 
     private void back(Player player, CrateEditorSession session) {
