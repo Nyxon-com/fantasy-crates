@@ -4,6 +4,7 @@ package it.haze.hazecrates.animation.opening.world.support;
 import it.haze.hazecrates.HazeCrates;
 import it.haze.hazecrates.animation.AnimationSession;
 import it.haze.hazecrates.crate.RewardDefinition;
+import it.haze.hazecrates.item.DisplayIcon;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
@@ -37,7 +38,8 @@ public final class WorldOpeningSupport {
 
     public static ItemDisplay spawnItem(Location location, ItemStack item, float scale, boolean glow) {
         return location.getWorld().spawn(location, ItemDisplay.class, display -> {
-            display.setItemStack(item);
+            display.setItemStack(DisplayIcon.light(item));
+            display.setBillboard(Display.Billboard.CENTER);
             display.setInvulnerable(true);
             display.setGravity(false);
             display.setGlowing(glow);

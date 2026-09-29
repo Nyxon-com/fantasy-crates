@@ -121,7 +121,9 @@ public final class LootboxOpenAnimation implements CrateAnimation {
                     }
                 }
 
-                spinOrbs();
+                if ((ticks & 1) == 0) {
+                    spinOrbs();
+                }
 
                 int spawnDone = OPEN_TICK + shown.size() * SPAWN_EVERY;
                 if (ticks < spawnDone + ORBIT_AFTER) {
@@ -151,6 +153,17 @@ public final class LootboxOpenAnimation implements CrateAnimation {
                 }
 
                 int lifted = ticks - liftStart;
+                if ((ticks & 1) != 0) {
+                    if (lifted >= LIFT_TICKS + LINGER) {
+                        cleanup();
+                        plugin.takeAnimSession(player.getUniqueId());
+                        if (session.finish()) {
+                            reveal.run();
+                        }
+                        cancel();
+                    }
+                    return;
+                }
                 if (prize != null && lifted <= LIFT_TICKS) {
                     float t = lifted / (float) LIFT_TICKS;
                     float eased = 1f - (1f - t) * (1f - t);
@@ -172,7 +185,7 @@ public final class LootboxOpenAnimation implements CrateAnimation {
                             orbZ(i, ticks) * collapse,
                             ticks * 20f,
                             shrink));
-                    if (lifted == LIFT_TICKS) {
+                    if (lifted >= LIFT_TICKS) {
                         WorldOpeningSupport.remove(orbs[i]);
                         orbs[i] = null;
                     }

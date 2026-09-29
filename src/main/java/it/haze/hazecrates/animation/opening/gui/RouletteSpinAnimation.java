@@ -9,6 +9,7 @@ import it.haze.hazecrates.animation.opening.gui.support.GuiOpeningSupport;
 import it.haze.hazecrates.animation.opening.gui.support.GuiOpeningTheme;
 import it.haze.hazecrates.crate.CrateDefinition;
 import it.haze.hazecrates.crate.RewardDefinition;
+import it.haze.hazecrates.item.DisplayIcon;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -104,7 +105,7 @@ public final class RouletteSpinAnimation implements CrateAnimation {
         GuiOpeningTheme.fillAll(inventory);
         inventory.setItem(POINTER, won ? GuiOpeningTheme.winPointer() : GuiOpeningTheme.pointer());
         for (int i = 0; i < RING.length; i++) {
-            var icon = ring.get(i).icon().clone();
+            var icon = DisplayIcon.light(ring.get(i).icon());
             if (won && i == 0) {
                 icon = GuiOpeningTheme.glow(icon);
             }
