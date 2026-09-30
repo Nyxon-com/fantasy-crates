@@ -13,6 +13,7 @@ repositories {
     maven("https://nexus.phoenixdevt.fr/repository/maven-public/")
     maven("https://jitpack.io")
     maven("https://repo.nexomc.com/releases")
+    maven("https://repo.aikar.co/content/groups/aikar/")
 }
 
 dependencies {
@@ -22,6 +23,8 @@ dependencies {
     compileOnly("com.github.LoneDev6:API-ItemsAdder:3.6.3-beta-14")
     compileOnly("com.nexomc:nexo:1.16.1")
     compileOnly(files("../v.0.91/plugins/packetevents-spigot-2.13.0.jar"))
+
+    implementation("co.aikar:acf-paper:0.5.1-SNAPSHOT")
 
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")
 
@@ -44,6 +47,8 @@ tasks.shadowJar {
 
     relocate("org.sqlite",        "it.haze.hazecrates.lib.sqlite")
     relocate("com.zaxxer.hikari", "it.haze.hazecrates.lib.hikari")
+    relocate("co.aikar.commands", "it.haze.hazecrates.lib.acf")
+    relocate("co.aikar.locales",  "it.haze.hazecrates.lib.locales")
 
     exclude("org/sqlite/native/FreeBSD/**")
     exclude("org/sqlite/native/Linux/aarch64/**")
