@@ -1,15 +1,20 @@
 // made by haze
 package it.haze.hazecrates.item;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
 import it.haze.hazecrates.HazeCrates;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public final class ExternalItemService {
 
@@ -33,6 +38,7 @@ public final class ExternalItemService {
                              List<String> lore, boolean glow) {
         ItemStack base = resolveBase(spec, amount);
         if (base == null) base = fallback(amount);
+        applySkullTexture(base, spec);
         applyMeta(base, name, lore, glow, spec.customModelData());
         return base;
     }
@@ -219,6 +225,24 @@ public final class ExternalItemService {
                     "[HazeCrates] Could not resolve Nexo item '" + spec.id()
                     + "' (may not be loaded yet): " + e.getMessage());
             return fallback(amount);
+        }
+    }
+
+    private void applySkullTexture(ItemStack item, ItemSpec spec) {
+        if (item == null || !spec.hasSkullTexture()) {
+            return;
+        }
+        if (!(item.getItemMeta() instanceof SkullMeta meta)) {
+            return;
+        }
+        try {
+            PlayerProfile profile = Bukkit.createProfile(UUID.nameUUIDFromBytes(
+                    ("HazeCrates:" + spec.skullTexture()).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            profile.setProperty(new ProfileProperty("textures", spec.skullTexture().trim()));
+            meta.setPlayerProfile(profile);
+            item.setItemMeta(meta);
+        } catch (Exception e) {
+            plugin.getLogger().warning("[HazeCrates] Skull texture non applicata: " + e.getMessage());
         }
     }
 

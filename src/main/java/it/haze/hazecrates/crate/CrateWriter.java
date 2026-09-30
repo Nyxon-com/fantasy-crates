@@ -73,6 +73,9 @@ public final class CrateWriter {
             map.put("id", r.id());
 
             map.put("item", r.itemSpec().serialize());
+            if (r.itemSpec().hasSkullTexture()) {
+                map.put("skull-texture", r.itemSpec().skullTexture());
+            }
 
             map.put("amount", r.icon().getAmount());
 

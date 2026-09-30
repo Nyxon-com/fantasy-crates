@@ -196,6 +196,15 @@ public final class CrateRegistry {
                     int mcmd   = ((Number) raw.getOrDefault("custom-model-data",0)).intValue();
                     spec = mcmd > 0 ? ItemSpec.vanilla(mn, mcmd) : ItemSpec.vanilla(mn);
                 }
+                Object skullRaw = raw.get("skull-texture");
+                if (skullRaw == null) skullRaw = raw.get("texture");
+                if (skullRaw == null) skullRaw = raw.get("skull");
+                if (skullRaw != null) {
+                    String texture = String.valueOf(skullRaw).trim();
+                    if (!texture.isBlank() && !"null".equalsIgnoreCase(texture)) {
+                        spec = spec.withSkullTexture(texture);
+                    }
+                }
 
                 int amount  = ((Number) raw.getOrDefault("amount",1)).intValue();
                 String name = raw.get("name") == null ? null : String.valueOf(raw.get("name"));
