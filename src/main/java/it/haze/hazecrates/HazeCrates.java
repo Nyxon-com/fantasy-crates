@@ -3,8 +3,7 @@ package it.haze.hazecrates;
 
 import it.haze.hazecrates.animation.AnimationSession;
 import it.haze.hazecrates.animation.AnimationRegistry;
-import it.haze.hazecrates.command.CrateCommand;
-import it.haze.hazecrates.command.HcCommand;
+import it.haze.hazecrates.command.CommandRegistrar;
 import it.haze.hazecrates.config.MessageService;
 import it.haze.hazecrates.crate.CrateDisplayService;
 import it.haze.hazecrates.crate.CratePlacementService;
@@ -45,6 +44,7 @@ public final class HazeCrates extends JavaPlugin {
     private CratePlacementService placements;
     private CrateDisplayService   display;
     private CratePacketGuard      packetGuard = CratePacketGuard.NOOP;
+    private CommandRegistrar      commands;
     private final java.util.Map<java.util.UUID, AnimationSession> animSessions =
             new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -74,19 +74,8 @@ public final class HazeCrates extends JavaPlugin {
         placements  = new CratePlacementService(this);
         display     = new CrateDisplayService(this);
 
-        CrateCommand crateCmd = new CrateCommand(this);
-        PluginCommand crate = getCommand("crate");
-        if (crate != null) { crate.setExecutor(crateCmd); crate.setTabCompleter(crateCmd); }
-        PluginCommand openCmd = getCommand("open");
-        if (openCmd != null) { openCmd.setExecutor(crateCmd); openCmd.setTabCompleter(crateCmd); }
-
-        HcCommand hcCmd = new HcCommand(this);
-        PluginCommand hc = getCommand("hc");
-        if (hc != null) { hc.setExecutor(hcCmd); hc.setTabCompleter(hcCmd); }
-
-        it.haze.hazecrates.command.ChiaveCommand chiaveCmd = new it.haze.hazecrates.command.ChiaveCommand(this);
-        PluginCommand meCmd = getCommand("chiave");
-        if (meCmd != null) { meCmd.setExecutor(chiaveCmd); meCmd.setTabCompleter(chiaveCmd); }
+        commands = new CommandRegistrar(this);
+        commands.register();
 
         getServer().getPluginManager().registerEvents(new CrateListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(this), this);
@@ -142,6 +131,7 @@ public final class HazeCrates extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (commands != null) commands.unregister();
         if (packetGuard != null) packetGuard.shutdown();
         it.haze.hazecrates.animation.opening.world.support.OpeningProps.clearAll();
         it.haze.hazecrates.animation.opening.world.support.TempOpenChest.restoreAll();
