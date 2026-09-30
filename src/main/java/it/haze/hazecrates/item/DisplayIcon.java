@@ -47,6 +47,13 @@ public final class DisplayIcon {
         if (cached == null) {
             cached = build(source);
             CACHE.put(source, cached);
+            // #region agent log
+            it.haze.hazecrates.debug.DebugProbe.iconBuilt();
+            // #endregion
+        } else {
+            // #region agent log
+            it.haze.hazecrates.debug.DebugProbe.iconHit();
+            // #endregion
         }
         return cached.clone();
     }
@@ -73,8 +80,12 @@ public final class DisplayIcon {
     private static void copyLook(ItemMeta from, ItemMeta to) {
         copyItemModel(from, to);
         copyCustomModel(from, to);
-        if (from instanceof SkullMeta skull && to instanceof SkullMeta target && skull.getPlayerProfile() != null) {
-            target.setPlayerProfile(skull.getPlayerProfile());
+        if (from instanceof SkullMeta skull && to instanceof SkullMeta target) {
+            if (skull.getOwnerProfile() != null) {
+                target.setOwnerProfile(skull.getOwnerProfile());
+            } else if (skull.getPlayerProfile() != null) {
+                target.setPlayerProfile(skull.getPlayerProfile());
+            }
         }
         if (from instanceof LeatherArmorMeta leather && to instanceof LeatherArmorMeta target) {
             target.setColor(leather.getColor());

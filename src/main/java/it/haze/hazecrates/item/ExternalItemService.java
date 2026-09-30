@@ -1,8 +1,6 @@
 // made by haze
 package it.haze.hazecrates.item;
 
-import com.destroystokyo.paper.profile.PlayerProfile;
-import com.destroystokyo.paper.profile.ProfileProperty;
 import it.haze.hazecrates.HazeCrates;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -11,12 +9,24 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.profile.PlayerProfile;
+import org.bukkit.profile.PlayerTextures;
 
+import java.net.URI;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class ExternalItemService {
+
+    private static final Pattern TEXTURE_URL = Pattern.compile("\"url\"\\s*:\\s*\"(.*?)\"");
+    private static final ConcurrentHashMap<String, PlayerProfile> SKULL_CACHE = new ConcurrentHashMap<>();
 
     private final HazeCrates plugin;
     private final boolean mmoitemsEnabled;
@@ -236,13 +246,34 @@ public final class ExternalItemService {
             return;
         }
         try {
-            PlayerProfile profile = Bukkit.createProfile(UUID.nameUUIDFromBytes(
-                    ("HazeCrates:" + spec.skullTexture()).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-            profile.setProperty(new ProfileProperty("textures", spec.skullTexture().trim()));
-            meta.setPlayerProfile(profile);
+            String texture = spec.skullTexture().trim();
+            PlayerProfile profile = SKULL_CACHE.computeIfAbsent(texture, ExternalItemService::buildSkullProfile);
+            if (profile == null) {
+                plugin.getLogger().warning("[HazeCrates] Skull texture non valida.");
+                return;
+            }
+            meta.setOwnerProfile(profile);
             item.setItemMeta(meta);
         } catch (Exception e) {
             plugin.getLogger().warning("[HazeCrates] Skull texture non applicata: " + e.getMessage());
+        }
+    }
+
+    private static PlayerProfile buildSkullProfile(String base64) {
+        try {
+            String decoded = new String(Base64.getDecoder().decode(base64), StandardCharsets.UTF_8);
+            Matcher matcher = TEXTURE_URL.matcher(decoded);
+            if (!matcher.find()) {
+                return null;
+            }
+            URL url = URI.create(matcher.group(1)).toURL();
+            PlayerProfile profile = Bukkit.createPlayerProfile(UUID.randomUUID());
+            PlayerTextures textures = profile.getTextures();
+            textures.setSkin(url);
+            profile.setTextures(textures);
+            return profile;
+        } catch (Exception e) {
+            return null;
         }
     }
 
