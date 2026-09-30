@@ -4,26 +4,42 @@ package it.haze.hazecrates.item;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-public record ItemSpec(ItemProvider provider, String id, int customModelData) {
+public record ItemSpec(ItemProvider provider, String id, int customModelData, String skullTexture) {
+
+    public ItemSpec(ItemProvider provider, String id, int customModelData) {
+        this(provider, id, customModelData, null);
+    }
 
     public static ItemSpec vanilla(String material) {
-        return new ItemSpec(ItemProvider.VANILLA, material, 0);
+        return new ItemSpec(ItemProvider.VANILLA, material, 0, null);
     }
 
     public static ItemSpec vanilla(String material, int cmd) {
-        return new ItemSpec(ItemProvider.VANILLA, material, cmd);
+        return new ItemSpec(ItemProvider.VANILLA, material, cmd, null);
+    }
+
+    public static ItemSpec vanillaHead(String material, String skullTexture) {
+        return new ItemSpec(ItemProvider.VANILLA, material, 0, skullTexture);
     }
 
     public static ItemSpec mmoitems(String typeAndId) {
-        return new ItemSpec(ItemProvider.MMOITEMS, typeAndId, 0);
+        return new ItemSpec(ItemProvider.MMOITEMS, typeAndId, 0, null);
     }
 
     public static ItemSpec itemsadder(String namespaceId) {
-        return new ItemSpec(ItemProvider.ITEMSADDER, namespaceId, 0);
+        return new ItemSpec(ItemProvider.ITEMSADDER, namespaceId, 0, null);
     }
 
     public static ItemSpec nexo(String itemId) {
-        return new ItemSpec(ItemProvider.NEXO, itemId, 0);
+        return new ItemSpec(ItemProvider.NEXO, itemId, 0, null);
+    }
+
+    public ItemSpec withSkullTexture(String texture) {
+        return new ItemSpec(provider, id, customModelData, texture);
+    }
+
+    public ItemSpec withCustomModelData(int cmd) {
+        return new ItemSpec(provider, id, cmd, skullTexture);
     }
 
     public static ItemSpec fromBaseStack(ItemStack item) {
@@ -60,5 +76,9 @@ public record ItemSpec(ItemProvider provider, String id, int customModelData) {
             case NEXO       -> "nexo:"       + id;
             case VANILLA    -> id;
         };
+    }
+
+    public boolean hasSkullTexture() {
+        return skullTexture != null && !skullTexture.isBlank();
     }
 }
