@@ -182,7 +182,6 @@ public final class CrateListener implements Listener {
             session.cancelTask();
             session.grantIfPending();
         }
-        plugin.packetGuard().disarm(event.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -274,12 +273,10 @@ public final class CrateListener implements Listener {
                     CrateAnimation anim = plugin.animations().animationFor(crate);
                     plugin.display().sendOpenTitle(player, crate);
                     plugin.messages().send(player, "opening", Map.of("crate", crate.displayName()));
-                    plugin.packetGuard().arm(player);
                     anim.play(player, location, crate, reward, () -> {
                                 plugin.takeAnimSession(uuid);
                                 plugin.rewards().grant(player, crate, reward);
                                 plugin.stats().recordOpening(player, crate);
-                                plugin.packetGuard().scheduleFlush(player);
                             });
                 },
                 () -> {
