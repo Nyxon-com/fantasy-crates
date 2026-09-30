@@ -78,6 +78,8 @@ public final class GuiListener implements Listener {
 
         if (plugin.hasAnimSession(player.getUniqueId())) {
             event.setCancelled(true);
+            // Click = stesso skip di ESC: chiude la GUI e consegna il premio.
+            player.closeInventory();
             return;
         }
 
@@ -452,6 +454,7 @@ public final class GuiListener implements Listener {
                 plugin.takeAnimSession(player.getUniqueId());
         if (animSession != null) {
             if (animSession.inventory() == null) {
+                // Apertura world/roll: la GUI non c'entra, rimetti la sessione.
                 plugin.startAnimSession(player.getUniqueId(), animSession);
             } else if (event.getInventory().equals(animSession.inventory())) {
                 animSession.cancelTask();
@@ -474,6 +477,28 @@ public final class GuiListener implements Listener {
                 plugin.guiManager().removeSession(player);
             }
         });
+    }
+
+    /** Shift durante roll/lootbox: salta subito al premio. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onSneakSkip(org.bukkit.event.player.PlayerToggleSneakEvent event) {
+        if (!event.isSneaking()) return;
+        Player player = event.getPlayer();
+        it.haze.hazecrates.animation.AnimationSession session =
+                plugin.takeAnimSession(player.getUniqueId());
+        if (session == null) return;
+        if (session.inventory() != null) {
+            plugin.startAnimSession(player.getUniqueId(), session);
+            return;
+        }
+        if (session.isFinished()) {
+            return;
+        }
+        // Non cancellare il task: le animazioni world si ripuliscono da sole al prossimo tick.
+        it.haze.hazecrates.animation.opening.world.support.OpeningProps.clear(player.getUniqueId());
+        session.scheduleGrant(plugin);
+        player.sendActionBar(net.kyori.adventure.text.Component.text(
+                "Premio ricevuto", net.kyori.adventure.text.format.NamedTextColor.GOLD));
     }
 
     private void back(Player player, CrateEditorSession session) {
