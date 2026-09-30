@@ -168,7 +168,6 @@ public final class PreviewInventory {
             }
         }
 
-        plugin.packetGuard().arm(player, size);
         player.openInventory(inv);
     }
 

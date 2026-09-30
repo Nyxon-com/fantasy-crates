@@ -464,10 +464,6 @@ public final class GuiListener implements Listener {
             }
         }
 
-        if (event.getInventory().getHolder() instanceof it.haze.hazecrates.gui.preview.PreviewHolder) {
-            plugin.packetGuard().scheduleFlush(player);
-        }
-
         if (plugin.guiManager().hasPendingInput(player)) return;
         if (!plugin.guiManager().hasSession(player)) return;
         plugin.getServer().getScheduler().runTask(plugin, () -> {

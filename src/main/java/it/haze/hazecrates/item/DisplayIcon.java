@@ -47,13 +47,6 @@ public final class DisplayIcon {
         if (cached == null) {
             cached = build(source);
             CACHE.put(source, cached);
-            // #region agent log
-            it.haze.hazecrates.debug.DebugProbe.iconBuilt();
-            // #endregion
-        } else {
-            // #region agent log
-            it.haze.hazecrates.debug.DebugProbe.iconHit();
-            // #endregion
         }
         return cached.clone();
     }

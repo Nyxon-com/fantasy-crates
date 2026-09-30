@@ -14,7 +14,6 @@ repositories {
     maven("https://jitpack.io")
     maven("https://repo.nexomc.com/releases")
     maven("https://repo.aikar.co/content/groups/aikar/")
-    maven("https://repo.codemc.io/repository/maven-releases/")
 }
 
 dependencies {
@@ -23,7 +22,6 @@ dependencies {
     compileOnly("net.Indyuce:MMOItems-API:6.9.5-SNAPSHOT")
     compileOnly("com.github.LoneDev6:API-ItemsAdder:3.6.3-beta-14")
     compileOnly("com.nexomc:nexo:1.16.1")
-    compileOnly("com.github.retrooper:packetevents-spigot:2.13.0")
 
     implementation("co.aikar:acf-paper:0.5.1-SNAPSHOT")
 
