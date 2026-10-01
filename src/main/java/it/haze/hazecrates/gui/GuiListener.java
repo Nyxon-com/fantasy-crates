@@ -482,22 +482,21 @@ public final class GuiListener implements Listener {
         });
     }
 
-    /** Shift durante roll/lootbox: salta subito al premio. */
+    /** Shift durante roll/lootbox world: salta subito al premio. Non tocca bulk/pannello. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onSneakSkip(org.bukkit.event.player.PlayerToggleSneakEvent event) {
         if (!event.isSneaking()) return;
         Player player = event.getPlayer();
         it.haze.hazecrates.animation.AnimationSession session =
-                plugin.takeAnimSession(player.getUniqueId());
-        if (session == null) return;
-        if (session.inventory() != null) {
-            plugin.startAnimSession(player.getUniqueId(), session);
-            return;
-        }
-        if (session.isFinished()) {
-            return;
-        }
-        // Non cancellare il task: le animazioni world si ripuliscono da sole al prossimo tick.
+                plugin.animSession(player.getUniqueId());
+        if (session == null || session.isFinished()) return;
+        // GUI CSGO/roulette: lo sneak non salta.
+        if (session.inventory() != null) return;
+        // Bulk open / placeholder (reveal null): non interrompere — shift+click del pannello
+        // altrimenti abortisce l'apertura multipla e "mangia" le chiavi.
+        if (!session.hasReveal()) return;
+
+        plugin.takeAnimSession(player.getUniqueId());
         it.haze.hazecrates.animation.opening.world.support.OpeningProps.clear(player.getUniqueId());
         session.scheduleGrant(plugin);
         player.sendActionBar(net.kyori.adventure.text.Component.text(
