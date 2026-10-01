@@ -3,7 +3,7 @@ package it.haze.hazecrates.gui.preview;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import it.haze.hazecrates.config.MiniMessageService;
 import org.bukkit.Material;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
@@ -11,8 +11,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 public final class PreviewTheme {
-
-    private static final MiniMessage MINI = MiniMessage.miniMessage();
 
     private PreviewTheme() {}
 
@@ -43,8 +41,8 @@ public final class PreviewTheme {
     }
 
     public static Component title(String miniMessage) {
-        return MINI.deserialize(miniMessage == null || miniMessage.isBlank() ? "<dark_gray>" : miniMessage)
-                .decoration(TextDecoration.ITALIC, false);
+        return MiniMessageService.shared().parse(miniMessage == null || miniMessage.isBlank()
+                ? "<dark_gray>" : miniMessage);
     }
 
     public static String vaultTitle(String plainName) {

@@ -16,6 +16,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -78,8 +79,6 @@ public final class GuiListener implements Listener {
 
         if (plugin.hasAnimSession(player.getUniqueId())) {
             event.setCancelled(true);
-            // Click = stesso skip di ESC: chiude la GUI e consegna il premio.
-            player.closeInventory();
             return;
         }
 
@@ -447,21 +446,29 @@ public final class GuiListener implements Listener {
     }
 
     @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (plugin.hasAnimSession(event.getWhoClicked().getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         if (!(event.getPlayer() instanceof Player player)) return;
 
         it.haze.hazecrates.animation.AnimationSession animSession =
-                plugin.takeAnimSession(player.getUniqueId());
-        if (animSession != null) {
-            if (animSession.inventory() == null) {
-                // Apertura world/roll: la GUI non c'entra, rimetti la sessione.
-                plugin.startAnimSession(player.getUniqueId(), animSession);
-            } else if (event.getInventory().equals(animSession.inventory())) {
-                animSession.cancelTask();
-                animSession.scheduleGrant(plugin);
-            } else {
-                plugin.startAnimSession(player.getUniqueId(), animSession);
-            }
+                plugin.animSession(player.getUniqueId());
+        if (animSession != null && animSession.inventory() == event.getInventory()
+                && !animSession.isFinished()) {
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()
+                        && plugin.animSession(player.getUniqueId()) == animSession
+                        && !animSession.isFinished()
+                        && player.getOpenInventory().getTopInventory() != animSession.inventory()) {
+                    player.openInventory(animSession.inventory());
+                }
+            });
+            return;
         }
 
         if (plugin.guiManager().hasPendingInput(player)) return;

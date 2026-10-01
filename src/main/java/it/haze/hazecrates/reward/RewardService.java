@@ -53,6 +53,10 @@ public final class RewardService {
     }
 
     public void grant(Player player, CrateDefinition crate, RewardDefinition reward) {
+        grant(player, crate, reward, true);
+    }
+
+    public void grant(Player player, CrateDefinition crate, RewardDefinition reward, boolean notifyPlayer) {
         if (giveFromTemplate(player, reward)) {
             // ok: item da cache, niente console mi give
         } else {
@@ -70,7 +74,9 @@ public final class RewardService {
             }
         }
 
-        plugin.messages().send(player, "reward", Map.of("reward", reward.plainName()));
+        if (notifyPlayer) {
+            plugin.messages().send(player, "reward", Map.of("reward", reward.plainName()));
+        }
 
         if (!crate.broadcast().isBlank() && reward.broadcast()) {
             int threshold = crate.broadcastThreshold();

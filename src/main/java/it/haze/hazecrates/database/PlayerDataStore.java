@@ -2,17 +2,20 @@
 package it.haze.hazecrates.database;
 
 import it.haze.hazecrates.HazeCrates;
+import it.haze.hazecrates.util.AsyncWorkService;
 import org.bukkit.Bukkit;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 
 /**
@@ -23,6 +26,7 @@ public final class PlayerDataStore {
 
     private final HazeCrates plugin;
     private final DatabaseService db;
+    private final AsyncWorkService async;
 
     private final ConcurrentMap<String, Integer> keys = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Integer> opened = new ConcurrentHashMap<>();
@@ -34,18 +38,20 @@ public final class PlayerDataStore {
 
     private final Set<UUID> loaded = ConcurrentHashMap.newKeySet();
     private final ConcurrentMap<UUID, CompletableFuture<Void>> loading = new ConcurrentHashMap<>();
+    private final ConcurrentMap<UUID, CompletableFuture<Void>> unloading = new ConcurrentHashMap<>();
+    private final AtomicBoolean flushing = new AtomicBoolean();
 
-    private BukkitTask flushTask;
+    private ScheduledFuture<?> flushTask;
 
-    public PlayerDataStore(HazeCrates plugin, DatabaseService db) {
+    public PlayerDataStore(HazeCrates plugin, DatabaseService db, AsyncWorkService async) {
         this.plugin = plugin;
         this.db = db;
+        this.async = async;
     }
 
     public void start() {
         long periodSec = Math.max(2L, plugin.getConfig().getLong("database.flush-seconds", 5L));
-        flushTask = Bukkit.getScheduler().runTaskTimerAsynchronously(
-                plugin, this::flushDirty, periodSec * 20L, periodSec * 20L);
+        flushTask = async.scheduleWithFixedDelay(this::flushDirty, Duration.ofSeconds(periodSec));
         for (var player : Bukkit.getOnlinePlayers()) {
             load(player.getUniqueId());
         }
@@ -53,8 +59,25 @@ public final class PlayerDataStore {
 
     public void shutdown() {
         if (flushTask != null) {
-            flushTask.cancel();
+            flushTask.cancel(false);
             flushTask = null;
+        }
+        try {
+            CompletableFuture.allOf(unloading.values().toArray(CompletableFuture[]::new)).join();
+        } catch (CompletionException ignored) {
+            // Failed player writes restored their dirty entries for this final flush.
+        }
+        long deadline = System.nanoTime() + Duration.ofSeconds(30).toNanos();
+        while (flushing.get() && System.nanoTime() < deadline) {
+            try {
+                Thread.sleep(Duration.ofMillis(10));
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        if (!async.awaitIdle(Duration.ofSeconds(30))) {
+            plugin.getLogger().warning("[HazeCrates] Async database work is still pending during shutdown.");
         }
         flushDirty();
     }
@@ -63,10 +86,9 @@ public final class PlayerDataStore {
         if (loaded.contains(uuid)) {
             return CompletableFuture.completedFuture(null);
         }
-        return loading.computeIfAbsent(uuid, id -> {
+        CompletableFuture<Void> future = loading.computeIfAbsent(uuid, id -> db.ready().thenCompose(ready -> {
             if (!db.isAvailable()) {
                 loaded.add(id);
-                loading.remove(id);
                 return CompletableFuture.completedFuture(null);
             }
             return db.query(conn -> {
@@ -79,24 +101,29 @@ public final class PlayerDataStore {
                 } catch (Exception e) {
                     throw new CompletionException(e);
                 }
-            }, null).whenComplete((v, err) -> {
-                loading.remove(id);
-                if (err != null) {
-                    plugin.getLogger().log(Level.WARNING,
-                            "[HazeCrates] Load dati player fallito: " + id, err);
-                    loaded.add(id);
-                }
-            });
+            }, null);
+        }));
+        future.whenComplete((v, err) -> {
+            loading.remove(uuid, future);
+            if (err != null) {
+                plugin.getLogger().log(Level.WARNING,
+                        "[HazeCrates] Load dati player fallito: " + uuid, err);
+                loaded.add(uuid);
+            }
         });
+        return future;
     }
 
     public void unload(UUID uuid) {
         loaded.remove(uuid);
         loading.remove(uuid);
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try {
-                flushPlayer(uuid);
-            } finally {
+        CompletableFuture<Void> write = flushPlayer(uuid);
+        unloading.put(uuid, write);
+        write.whenComplete((v, error) -> {
+            unloading.remove(uuid, write);
+            if (error != null) {
+                plugin.getLogger().log(Level.WARNING, "[HazeCrates] Flush player fallito: " + uuid, error);
+            } else if (!loaded.contains(uuid)) {
                 String prefix = uuid + ":";
                 keys.keySet().removeIf(k -> k.startsWith(prefix));
                 opened.keySet().removeIf(k -> k.startsWith(prefix));
@@ -221,8 +248,8 @@ public final class PlayerDataStore {
         }
     }
 
-    private void flushPlayer(UUID uuid) {
-        if (!db.isAvailable()) return;
+    private CompletableFuture<Void> flushPlayer(UUID uuid) {
+        if (!db.isAvailable()) return CompletableFuture.completedFuture(null);
         String prefix = uuid + ":";
         Set<String> keyFlush = new HashSet<>();
         Set<String> openFlush = new HashSet<>();
@@ -230,12 +257,11 @@ public final class PlayerDataStore {
         for (String k : dirtyKeys) if (k.startsWith(prefix)) keyFlush.add(k);
         for (String k : dirtyOpened) if (k.startsWith(prefix)) openFlush.add(k);
         for (String k : dirtyClaims) if (k.startsWith(prefix)) claimFlush.add(k);
-        if (keyFlush.isEmpty() && openFlush.isEmpty() && claimFlush.isEmpty()) return;
+        if (keyFlush.isEmpty() && openFlush.isEmpty() && claimFlush.isEmpty()) return CompletableFuture.completedFuture(null);
         dirtyKeys.removeAll(keyFlush);
         dirtyOpened.removeAll(openFlush);
         dirtyClaims.removeAll(claimFlush);
-        try {
-            db.query(conn -> {
+        return db.transaction(conn -> {
                 try {
                     writeKeys(conn, keyFlush);
                     writeOpened(conn, openFlush);
@@ -244,16 +270,25 @@ public final class PlayerDataStore {
                 } catch (Exception e) {
                     throw new CompletionException(e);
                 }
-            }, null).join();
-        } catch (Exception e) {
-            dirtyKeys.addAll(keyFlush);
-            dirtyOpened.addAll(openFlush);
-            dirtyClaims.addAll(claimFlush);
-            plugin.getLogger().log(Level.WARNING, "[HazeCrates] Flush player fallito", e);
-        }
+            }).whenComplete((v, error) -> {
+                if (error != null) {
+                    dirtyKeys.addAll(keyFlush);
+                    dirtyOpened.addAll(openFlush);
+                    dirtyClaims.addAll(claimFlush);
+                }
+            });
     }
 
     private void flushDirty() {
+        if (!flushing.compareAndSet(false, true)) return;
+        try {
+            flushDirtyNow();
+        } finally {
+            flushing.set(false);
+        }
+    }
+
+    private void flushDirtyNow() {
         if (!db.isAvailable()) return;
         Set<String> keyFlush = Set.copyOf(dirtyKeys);
         Set<String> openFlush = Set.copyOf(dirtyOpened);
@@ -263,7 +298,7 @@ public final class PlayerDataStore {
         dirtyOpened.removeAll(openFlush);
         dirtyClaims.removeAll(claimFlush);
         try {
-            db.query(conn -> {
+            db.transaction(conn -> {
                 try {
                     writeKeys(conn, keyFlush);
                     writeOpened(conn, openFlush);
@@ -272,7 +307,7 @@ public final class PlayerDataStore {
                 } catch (Exception e) {
                     throw new CompletionException(e);
                 }
-            }, null).join();
+            }).join();
         } catch (Exception e) {
             dirtyKeys.addAll(keyFlush);
             dirtyOpened.addAll(openFlush);
@@ -282,6 +317,7 @@ public final class PlayerDataStore {
     }
 
     private void writeKeys(Connection conn, Set<String> entries) throws Exception {
+        if (entries.isEmpty()) return;
         boolean sqlite = db.isSqlite();
         String upsert = sqlite
                 ? "INSERT INTO fc_virtual_keys(uuid,crate_id,amount) VALUES(?,?,?) ON CONFLICT(uuid,crate_id) DO UPDATE SET amount=excluded.amount"
@@ -300,6 +336,7 @@ public final class PlayerDataStore {
     }
 
     private void writeOpened(Connection conn, Set<String> entries) throws Exception {
+        if (entries.isEmpty()) return;
         boolean sqlite = db.isSqlite();
         String upsert = sqlite
                 ? "INSERT INTO fc_player_stats(uuid,crate_id,total_opened,last_opened_at) VALUES(?,?,?,?) ON CONFLICT(uuid,crate_id) DO UPDATE SET total_opened=excluded.total_opened, last_opened_at=excluded.last_opened_at"
@@ -320,6 +357,7 @@ public final class PlayerDataStore {
     }
 
     private void writeClaims(Connection conn, Set<String> entries) throws Exception {
+        if (entries.isEmpty()) return;
         boolean sqlite = db.isSqlite();
         String upsert = sqlite
                 ? "INSERT INTO fc_reward_progress(uuid,crate_id,milestone_id,current_count,claimed) VALUES(?,?,?,0,1) ON CONFLICT(uuid,crate_id,milestone_id) DO UPDATE SET claimed=1"

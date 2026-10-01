@@ -7,6 +7,7 @@ import it.haze.hazecrates.animation.CrateAnimation;
 import it.haze.hazecrates.crate.CrateDefinition;
 import it.haze.hazecrates.crate.CratePlacementService;
 import it.haze.hazecrates.crate.KeyType;
+import it.haze.hazecrates.crate.RewardDefinition;
 import it.haze.hazecrates.gui.preview.PreviewInventory;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -24,10 +25,13 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.logging.Level;
 
 public final class CrateListener implements Listener {
 
@@ -51,8 +55,13 @@ public final class CrateListener implements Listener {
         }
         Player player = event.getPlayer();
         ItemStack hand = player.getInventory().getItemInMainHand();
+        boolean bulkPlacedCrate = player.isSneaking()
+                && event.getAction() == Action.RIGHT_CLICK_BLOCK
+                && event.getClickedBlock() != null
+                && getCrateId(event.getClickedBlock()) != null;
 
-        if (hand.hasItemMeta() && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
+        if (!bulkPlacedCrate && hand.hasItemMeta()
+                && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
             String heldCrateId = hand.getItemMeta().getPersistentDataContainer().get(crateItemKey, PersistentDataType.STRING);
             if (heldCrateId != null) {
                 CrateDefinition crate = plugin.crates().get(heldCrateId);
@@ -69,7 +78,8 @@ public final class CrateListener implements Listener {
                     } else {
                         openLoc = player.getLocation().add(player.getLocation().getDirection().setY(0).normalize().multiply(1.8));
                     }
-                    tryOpen(player, crate, openLoc, true);
+                    if (player.isSneaking()) tryOpenAll(player, crate);
+                    else tryOpen(player, crate, openLoc, true);
                     return;
                 }
 
@@ -131,7 +141,7 @@ public final class CrateListener implements Listener {
 
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
-        if (hand.hasItemMeta()) {
+        if (!bulkPlacedCrate && hand.hasItemMeta()) {
             String held = hand.getItemMeta().getPersistentDataContainer()
                     .get(crateItemKey, PersistentDataType.STRING);
             if (held != null && crate.keyType() != KeyType.LOOTBOX) return;
@@ -149,7 +159,8 @@ public final class CrateListener implements Listener {
         }
 
         Location openAt = clicked.getLocation().add(0.5, 1.0, 0.5);
-        tryOpen(player, crate, openAt, true);
+        if (player.isSneaking()) tryOpenAll(player, crate);
+        else tryOpen(player, crate, openAt, true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -263,6 +274,117 @@ public final class CrateListener implements Listener {
             }
         }
         return plugin.keys().takePhysical(player, crateId, 1) > 0;
+    }
+
+    public void tryOpenAll(Player player, CrateDefinition crate) {
+        if (!player.hasPermission("hazecrates.open." + crate.id())
+                && !player.hasPermission("hazecrates.open.*")) {
+            plugin.messages().send(player, "no-permission");
+            return;
+        }
+        if (!plugin.rewards().hasAccessible(player, crate)) {
+            plugin.messages().send(player, "no-rewards");
+            return;
+        }
+
+        UUID uuid = player.getUniqueId();
+        AnimationSession session = new AnimationSession(null, null);
+        if (!plugin.tryStartAnimSession(uuid, session)) {
+            plugin.messages().send(player, "already-opening");
+            return;
+        }
+
+        plugin.playerData().load(uuid).whenComplete((ignored, error) -> {
+            Runnable start = () -> {
+                if (!player.isOnline() || plugin.animSession(uuid) != session) return;
+                if (error != null) {
+                    plugin.takeAnimSession(uuid);
+                    plugin.messages().send(player, "database-error");
+                    return;
+                }
+                startBulkOpen(player, crate, session);
+            };
+            if (org.bukkit.Bukkit.isPrimaryThread()) start.run();
+            else plugin.getServer().getScheduler().runTask(plugin, start);
+        });
+    }
+
+    private void startBulkOpen(Player player, CrateDefinition crate, AnimationSession session) {
+        UUID uuid = player.getUniqueId();
+        int physical = crate.keyType() == KeyType.VIRTUAL ? 0
+                : plugin.keys().countPhysical(player, crate.id());
+        int virtual = crate.keyType() == KeyType.LOOTBOX ? 0
+                : plugin.playerData().getKeys(uuid, crate.id());
+        if (physical <= 0 && virtual <= 0) {
+            plugin.takeAnimSession(uuid);
+            plugin.messages().send(player, crate.keyType() == KeyType.LOOTBOX ? "need-crate"
+                    : crate.keyType() == KeyType.VIRTUAL ? "need-virtual-key" : "need-key",
+                    Map.of("crate", crate.displayName(), "type", "fisica o virtuale"));
+            return;
+        }
+
+        int maxPerTick = Math.clamp(plugin.getConfig().getInt("bulk-open.max-per-tick", 4), 1, 16);
+        long budgetNanos = Math.clamp(plugin.getConfig().getLong("bulk-open.time-budget-ms", 2), 1, 5)
+                * 1_000_000L;
+        BukkitRunnable task = new BukkitRunnable() {
+            int physicalLeft = physical;
+            int virtualLeft = virtual;
+            long opened;
+
+            @Override
+            public void run() {
+                if (!player.isOnline() || plugin.animSession(uuid) != session) {
+                    cancel();
+                    return;
+                }
+
+                long started = System.nanoTime();
+                for (int i = 0; i < maxPerTick && (physicalLeft > 0 || virtualLeft > 0); i++) {
+                    RewardDefinition reward = plugin.rewards().choose(player, crate).orElse(null);
+                    if (reward == null) {
+                        finish();
+                        plugin.messages().send(player, "no-rewards");
+                        return;
+                    }
+
+                    if (physicalLeft > 0) {
+                        if (plugin.keys().takePhysical(player, crate.id(), 1) != 1) {
+                            physicalLeft = 0;
+                            continue;
+                        }
+                        physicalLeft--;
+                    } else if (!plugin.playerData().consumeKey(uuid, crate.id())) {
+                        virtualLeft = 0;
+                        continue;
+                    } else {
+                        virtualLeft--;
+                    }
+
+                    try {
+                        plugin.rewards().grant(player, crate, reward, false);
+                        plugin.stats().recordOpening(player, crate);
+                        opened++;
+                    } catch (Exception failure) {
+                        plugin.getLogger().log(Level.SEVERE, "[HazeCrates] Bulk opening failed for " + uuid, failure);
+                        finish();
+                        plugin.messages().send(player, "bulk-opening-error");
+                        return;
+                    }
+                    if (System.nanoTime() - started >= budgetNanos) break;
+                }
+                if (physicalLeft <= 0 && virtualLeft <= 0) finish();
+            }
+
+            private void finish() {
+                cancel();
+                plugin.takeAnimSession(uuid);
+                if (opened > 0) {
+                    plugin.messages().send(player, "bulk-opening-complete",
+                            Map.of("amount", Long.toString(opened), "crate", crate.displayName()));
+                }
+            }
+        };
+        session.bind(task.runTaskTimer(plugin, 1L, 1L));
     }
 
     public void open(Player player, CrateDefinition crate, Location location) {

@@ -3,10 +3,6 @@ package it.haze.hazecrates.config;
 
 import it.haze.hazecrates.HazeCrates;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
@@ -18,7 +14,6 @@ public final class MessageService {
 
     private final HazeCrates plugin;
     private YamlConfiguration config;
-    private static final MiniMessage MM = MiniMessage.miniMessage();
 
     public MessageService(HazeCrates plugin) {
         this.plugin = plugin;
@@ -26,6 +21,7 @@ public final class MessageService {
     }
 
     public void reload() {
+        MiniMessageService.shared().clear();
         File file = new File(plugin.getDataFolder(), "messages.yml");
         if (!file.exists()) {
             plugin.saveResource("messages.yml", false);
@@ -47,19 +43,14 @@ public final class MessageService {
     }
 
     public Component parse(String raw, Map<String, String> values) {
-        if (raw == null || raw.isBlank()) return Component.empty();
+        if (raw == null || raw.isBlank()) return MiniMessageService.shared().parse(raw);
 
         for (Map.Entry<String, String> e : values.entrySet()) {
             String val = e.getValue() != null ? e.getValue() : "";
             raw = raw.replace("%" + e.getKey() + "%", val);
         }
 
-        String converted = legacyToMini(raw);
-        try {
-            return MM.deserialize(converted);
-        } catch (Exception e) {
-            return LegacyComponentSerializer.legacyAmpersand().deserialize(raw);
-        }
+        return MiniMessageService.shared().parse(raw);
     }
 
     public Component parse(String raw) {
@@ -115,9 +106,7 @@ public final class MessageService {
     }
 
     public static String serialize(Component component) {
-        if (component == null) return "";
-        return MM.serialize(component.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC,
-                net.kyori.adventure.text.format.TextDecoration.State.NOT_SET));
+        return MiniMessageService.shared().serialize(component);
     }
 
     public static boolean isBrokenLegacyHex(String text) {

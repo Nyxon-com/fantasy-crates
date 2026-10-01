@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     java
     id("com.gradleup.shadow") version "9.1.0"
@@ -17,9 +19,10 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("net.Indyuce:MMOItems-API:6.9.5-SNAPSHOT")
+    compileOnly("io.lumine:MythicLib-dist:1.6.2-SNAPSHOT")
     compileOnly("com.github.LoneDev6:API-ItemsAdder:3.6.3-beta-14")
     compileOnly("com.nexomc:nexo:1.16.1")
 
@@ -30,16 +33,21 @@ dependencies {
     implementation("com.zaxxer:HikariCP:6.2.1") {
         exclude(group = "org.slf4j")
     }
+    implementation("com.github.ben-manes.caffeine:caffeine:3.2.4")
+    testImplementation("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
+java { toolchain.languageVersion.set(JavaLanguageVersion.of(25)) }
 tasks.withType<JavaCompile>().configureEach {
-    options.release.set(21)
+    options.release.set(25)
     options.encoding = "UTF-8"
 }
 tasks.processResources {
     filesMatching("plugin.yml") { expand("version" to project.version) }
 }
+tasks.test { useJUnitPlatform() }
 
 tasks.shadowJar {
     archiveClassifier.set("")
@@ -47,6 +55,7 @@ tasks.shadowJar {
     relocate("com.zaxxer.hikari", "it.haze.hazecrates.lib.hikari")
     relocate("co.aikar.commands", "it.haze.hazecrates.lib.acf")
     relocate("co.aikar.locales",  "it.haze.hazecrates.lib.locales")
+    relocate("com.github.benmanes.caffeine", "it.haze.hazecrates.lib.caffeine")
 
     exclude("org/sqlite/native/FreeBSD/**")
     exclude("org/sqlite/native/Linux/aarch64/**")
@@ -63,7 +72,6 @@ tasks.shadowJar {
     exclude("org/sqlite/native/Windows/aarch64/**")
     exclude("org/sqlite/native/Windows/armv7/**")
 
-    exclude("com/zaxxer/hikari/metrics/**")
     exclude("com/zaxxer/hikari/hibernate/**")
 
     exclude("org/slf4j/**")
@@ -77,6 +85,14 @@ tasks.shadowJar {
     exclude("module-info.class")
 
     mergeServiceFiles()
+
+    doLast {
+        ZipFile(archiveFile.get().asFile).use { jar ->
+            check(jar.getEntry("it/haze/hazecrates/lib/hikari/metrics/MetricsTrackerFactory.class") != null) {
+                "Shaded HikariCP is missing MetricsTrackerFactory"
+            }
+        }
+    }
 }
 
 tasks.build { dependsOn(tasks.shadowJar) }

@@ -49,7 +49,6 @@ public final class ExternalItemService {
     public void clearCache() {
         baseCache.clear();
         mmoIdIndex.clear();
-        DisplayIcon.clear();
         it.haze.hazecrates.gui.preview.PreviewInventory.clearIconCache();
     }
 
@@ -124,16 +123,10 @@ public final class ExternalItemService {
         }
         if (mmoitemsEnabled) {
             try {
-                Class<?> nbtClass = Class.forName("io.lumine.mythic.lib.api.item.NBTItem");
-                Object nbt = nbtClass.getMethod("get", ItemStack.class).invoke(null, item);
-                boolean hasType = Boolean.TRUE.equals(nbtClass.getMethod("hasType").invoke(nbt));
-                if (hasType) {
-                    String type = String.valueOf(nbtClass.getMethod("getType").invoke(nbt));
-                    String id = String.valueOf(nbtClass.getMethod("getString", String.class)
-                            .invoke(nbt, "MMOITEMS_ITEM_ID"));
-                    if (type != null && !"null".equals(type) && id != null && !id.isBlank() && !"null".equals(id)) {
-                        return ItemSpec.mmoitems(type + ":" + id);
-                    }
+                String type = net.Indyuce.mmoitems.MMOItems.getTypeName(item);
+                String id = net.Indyuce.mmoitems.MMOItems.getID(item);
+                if (type != null && !type.isBlank() && id != null && !id.isBlank()) {
+                    return ItemSpec.mmoitems(type + ":" + id);
                 }
             } catch (Exception ignored) {}
         }
