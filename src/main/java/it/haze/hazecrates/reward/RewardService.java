@@ -21,9 +21,7 @@ public final class RewardService {
     }
 
     public Optional<RewardDefinition> choose(Player player, CrateDefinition crate) {
-        List<RewardDefinition> pool = crate.rewards().stream()
-                .filter(r -> r.permission().isBlank() || player.hasPermission(r.permission()))
-                .toList();
+        List<RewardDefinition> pool = accessible(player, crate);
         if (pool.isEmpty()) return Optional.empty();
         int total = pool.stream().mapToInt(RewardDefinition::weight).sum();
         if (total <= 0) return Optional.empty();
@@ -33,6 +31,17 @@ public final class RewardService {
             if (roll < 0) return Optional.of(r);
         }
         return Optional.of(pool.get(pool.size() - 1));
+    }
+
+    /** True se esiste almeno un premio con weight > 0 accessibile al player (permesso). */
+    public boolean hasAccessible(Player player, CrateDefinition crate) {
+        return accessible(player, crate).stream().anyMatch(r -> r.weight() > 0);
+    }
+
+    private static List<RewardDefinition> accessible(Player player, CrateDefinition crate) {
+        return crate.rewards().stream()
+                .filter(r -> r.permission().isBlank() || player.hasPermission(r.permission()))
+                .toList();
     }
 
     public void grant(Player player, CrateDefinition crate, RewardDefinition reward) {
