@@ -234,7 +234,6 @@ public final class CrateRegistry {
 
                 list.add(new RewardDefinition(rid, spec, icon, commands, weight,
                         perm.equals("null") ? "" : perm, bcast, loreOverride, slot));
-                DisplayIcon.light(icon);
             } catch (Exception e) {
                 plugin.getLogger().warning("Skipping reward in '" + crateId + "': " + e.getMessage());
             }

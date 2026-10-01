@@ -9,7 +9,6 @@ import it.haze.hazecrates.animation.opening.gui.support.GuiOpeningSupport;
 import it.haze.hazecrates.animation.opening.world.support.WorldOpeningSupport;
 import it.haze.hazecrates.crate.CrateDefinition;
 import it.haze.hazecrates.crate.RewardDefinition;
-import it.haze.hazecrates.item.DisplayIcon;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.entity.ArmorStand;
@@ -45,7 +44,7 @@ public final class RewardRollAnimation implements CrateAnimation {
         }
 
         Location hover = location.clone().add(0, 1.35, 0);
-        ItemDisplay display = WorldOpeningSupport.spawnItem(hover, pool.get(0).icon(), 0.7f, false);
+        ItemDisplay display = WorldOpeningSupport.spawnItem(hover, pool.get(0).preview(), 0.7f, false);
         ArmorStand name = WorldOpeningSupport.spawnName(hover.clone().add(0, 0.45, 0), pool.get(0));
         AnimationSession session = WorldOpeningSupport.begin(plugin, player, reveal);
         int maxSpins = Math.max(16, template.duration() / 3);
@@ -93,14 +92,14 @@ public final class RewardRollAnimation implements CrateAnimation {
                     RewardDefinition shown = GuiOpeningSupport.pickFiller(pool, reward, rng);
                     if (shown != last[0]) {
                         last[0] = shown;
-                        display.setItemStack(DisplayIcon.light(shown.icon()));
+                    display.setItemStack(shown.preview());
                         name.customName(shown.displayComponent());
                     }
                     player.playSound(player, template.sound(), 0.4f, 1.3f - spins * 0.02f);
                     return;
                 }
 
-                display.setItemStack(DisplayIcon.light(reward.icon()));
+                display.setItemStack(reward.preview());
                 display.setGlowing(true);
                 name.customName(reward.displayComponent());
                 hover.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, hover, 18, 0.2, 0.2, 0.2, 0.05);

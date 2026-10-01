@@ -9,7 +9,6 @@ import it.haze.hazecrates.animation.opening.gui.support.GuiOpeningSupport;
 import it.haze.hazecrates.animation.opening.gui.support.GuiOpeningTheme;
 import it.haze.hazecrates.crate.CrateDefinition;
 import it.haze.hazecrates.crate.RewardDefinition;
-import it.haze.hazecrates.item.DisplayIcon;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -118,7 +117,7 @@ public final class CsgoScrollAnimation implements CrateAnimation {
 
     private static void paintRow(Inventory inventory, List<RewardDefinition> row, boolean won) {
         for (int i = 0; i < STRIP.length; i++) {
-            var icon = DisplayIcon.light(row.get(i).icon());
+            var icon = row.get(i).preview();
             if (won && i == CENTER) {
                 icon = GuiOpeningTheme.glow(icon);
             }
