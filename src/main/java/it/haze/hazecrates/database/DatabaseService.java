@@ -70,11 +70,7 @@ public final class DatabaseService {
     }
 
     private static void loadSqliteDriver() throws ClassNotFoundException {
-        try {
-            Class.forName("org.sqlite.JDBC");
-        } catch (ClassNotFoundException relocated) {
-            Class.forName("it.haze.hazecrates.lib.sqlite.JDBC");
-        }
+        Class.forName("org.sqlite.JDBC");
     }
 
     private void connectRemote(String driver) throws Exception {
