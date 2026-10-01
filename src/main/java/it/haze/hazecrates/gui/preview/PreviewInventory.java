@@ -46,7 +46,9 @@ public final class PreviewInventory {
 
         List<RewardDefinition> allRewards = new ArrayList<>(crate.rewards());
         allRewards.sort((a, b) -> Integer.compare(b.weight(), a.weight()));
-        int totalWeight = allRewards.stream().mapToInt(RewardDefinition::weight).sum();
+        int totalWeight = crate.totalWeight() > 0
+                ? crate.totalWeight()
+                : allRewards.stream().mapToInt(RewardDefinition::weight).sum();
 
         int rows = Math.max(1, Math.min(6, preview.rows()));
         int size = rows * 9;

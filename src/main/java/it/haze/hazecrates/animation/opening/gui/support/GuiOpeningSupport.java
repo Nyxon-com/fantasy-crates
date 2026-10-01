@@ -5,6 +5,7 @@ import it.haze.hazecrates.HazeCrates;
 import it.haze.hazecrates.animation.AnimationSession;
 import it.haze.hazecrates.crate.CrateDefinition;
 import it.haze.hazecrates.crate.RewardDefinition;
+import it.haze.hazecrates.item.DisplayIcon;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -43,7 +44,11 @@ public final class GuiOpeningSupport {
     }
 
     public static List<RewardDefinition> pool(CrateDefinition crate) {
-        return new ArrayList<>(crate.rewards());
+        List<RewardDefinition> pool = new ArrayList<>(crate.rewards());
+        for (RewardDefinition r : pool) {
+            DisplayIcon.light(r.icon());
+        }
+        return pool;
     }
 
     public static RewardDefinition pickFiller(List<RewardDefinition> pool, RewardDefinition winner, Random rng) {

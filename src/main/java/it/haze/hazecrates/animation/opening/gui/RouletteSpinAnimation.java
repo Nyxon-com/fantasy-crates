@@ -95,14 +95,14 @@ public final class RouletteSpinAnimation implements CrateAnimation {
                 linger = 0;
             }
         };
-        session.bind(task.runTaskTimer(plugin, 3L, 3L));
+        session.bind(task.runTaskTimer(plugin, 4L, 4L));
     }
 
     private static int interval(int spins) {
-        if (spins < 12) return 1;
-        if (spins < 18) return 2;
-        if (spins < 22) return 3;
-        return 5;
+        if (spins < 10) return 1;
+        if (spins < 16) return 2;
+        if (spins < 20) return 3;
+        return 4;
     }
 
     private static void paintRing(Inventory inventory, List<RewardDefinition> ring, boolean won) {
