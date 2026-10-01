@@ -323,12 +323,19 @@ public final class CrateListener implements Listener {
             return;
         }
 
+        int maxBatch = Math.clamp(plugin.getConfig().getInt("bulk-open.max-per-open", 5), 1, 64);
+        int available = physical + virtual;
+        int toOpen = Math.min(available, maxBatch);
+        // Preferisci prima le chiavi fisiche, poi le virtuali.
+        int physicalToUse = Math.min(physical, toOpen);
+        int virtualToUse = toOpen - physicalToUse;
+
         int maxPerTick = Math.clamp(plugin.getConfig().getInt("bulk-open.max-per-tick", 4), 1, 16);
         long budgetNanos = Math.clamp(plugin.getConfig().getLong("bulk-open.time-budget-ms", 2), 1, 5)
                 * 1_000_000L;
         BukkitRunnable task = new BukkitRunnable() {
-            int physicalLeft = physical;
-            int virtualLeft = virtual;
+            int physicalLeft = physicalToUse;
+            int virtualLeft = virtualToUse;
             long opened;
 
             @Override
