@@ -201,6 +201,10 @@ public final class CrateListener implements Listener {
             plugin.messages().send(player, "no-permission");
             return;
         }
+        if (!plugin.rewards().hasAccessible(player, crate)) {
+            plugin.messages().send(player, "no-rewards");
+            return;
+        }
         java.util.UUID uuid = player.getUniqueId();
         if (!plugin.tryStartAnimSession(uuid, new AnimationSession(null, null))) {
             plugin.messages().send(player, "already-opening");
