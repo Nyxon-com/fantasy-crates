@@ -32,6 +32,7 @@ public final class ExternalItemService {
     private final boolean mmoitemsEnabled;
     private final boolean itemsadderEnabled;
     private final boolean nexoEnabled;
+    private final ConcurrentHashMap<String, ItemStack> baseCache = new ConcurrentHashMap<>();
 
     public ExternalItemService(HazeCrates plugin) {
         this.plugin = plugin;
@@ -42,6 +43,12 @@ public final class ExternalItemService {
         if (mmoitemsEnabled)   plugin.getLogger().info("[HazeCrates] MMOItems integration enabled.");
         if (itemsadderEnabled) plugin.getLogger().info("[HazeCrates] ItemsAdder integration enabled.");
         if (nexoEnabled)       plugin.getLogger().info("[HazeCrates] Nexo integration enabled.");
+    }
+
+    public void clearCache() {
+        baseCache.clear();
+        DisplayIcon.clear();
+        it.haze.hazecrates.gui.preview.PreviewInventory.clearIconCache();
     }
 
     public ItemStack resolve(ItemSpec spec, int amount, String name,
@@ -132,12 +139,26 @@ public final class ExternalItemService {
     }
 
     private ItemStack resolveBase(ItemSpec spec, int amount) {
-        return switch (spec.provider()) {
-            case VANILLA    -> resolveVanilla(spec, amount);
-            case MMOITEMS   -> resolveMmoItems(spec, amount);
-            case ITEMSADDER -> resolveItemsAdder(spec, amount);
-            case NEXO       -> resolveNexo(spec, amount);
-        };
+        String cacheKey = spec.provider().name() + ':' + spec.id().toLowerCase(Locale.ROOT)
+                + (spec.hasSkullTexture() ? (':' + spec.skullTexture()) : "");
+        ItemStack cached = baseCache.get(cacheKey);
+        if (cached == null) {
+            ItemStack built = switch (spec.provider()) {
+                case VANILLA    -> resolveVanilla(spec, 1);
+                case MMOITEMS   -> resolveMmoItems(spec, 1);
+                case ITEMSADDER -> resolveItemsAdder(spec, 1);
+                case NEXO       -> resolveNexo(spec, 1);
+            };
+            if (built == null || built.getType().isAir() || built.getType() == Material.BARRIER) {
+                return built;
+            }
+            applySkullTexture(built, spec);
+            baseCache.put(cacheKey, built);
+            cached = built;
+        }
+        ItemStack clone = cached.clone();
+        clone.setAmount(Math.max(1, amount));
+        return clone;
     }
 
     private ItemStack resolveVanilla(ItemSpec spec, int amount) {

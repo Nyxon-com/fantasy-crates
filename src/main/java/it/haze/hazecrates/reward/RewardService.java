@@ -21,21 +21,23 @@ public final class RewardService {
     }
 
     public Optional<RewardDefinition> choose(Player player, CrateDefinition crate) {
-        List<RewardDefinition> pool = new ArrayList<>();
         int total = 0;
         for (RewardDefinition r : crate.rewards()) {
             if (r.weight() <= 0) continue;
             if (!r.permission().isBlank() && !player.hasPermission(r.permission())) continue;
-            pool.add(r);
             total += r.weight();
         }
-        if (pool.isEmpty() || total <= 0) return Optional.empty();
+        if (total <= 0) return Optional.empty();
         int roll = random.nextInt(total);
-        for (RewardDefinition r : pool) {
+        RewardDefinition last = null;
+        for (RewardDefinition r : crate.rewards()) {
+            if (r.weight() <= 0) continue;
+            if (!r.permission().isBlank() && !player.hasPermission(r.permission())) continue;
+            last = r;
             roll -= r.weight();
             if (roll < 0) return Optional.of(r);
         }
-        return Optional.of(pool.get(pool.size() - 1));
+        return Optional.ofNullable(last);
     }
 
     public boolean hasAccessible(Player player, CrateDefinition crate) {

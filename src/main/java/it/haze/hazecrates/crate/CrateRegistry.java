@@ -29,6 +29,7 @@ public final class CrateRegistry {
     public void reload() {
         DisplayIcon.clear();
         PreviewInventory.clearIconCache();
+        plugin.externalItems().clearCache();
         crates.clear();
         aliases.clear();
         File dir = new File(plugin.getDataFolder(), "crates");

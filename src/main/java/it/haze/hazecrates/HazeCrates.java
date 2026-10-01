@@ -10,6 +10,7 @@ import it.haze.hazecrates.crate.CratePlacementService;
 import it.haze.hazecrates.crate.CrateRegistry;
 import it.haze.hazecrates.crate.CrateWriter;
 import it.haze.hazecrates.database.DatabaseService;
+import it.haze.hazecrates.database.PlayerDataStore;
 import it.haze.hazecrates.gui.GuiListener;
 import it.haze.hazecrates.gui.GuiManager;
 import it.haze.hazecrates.item.ExternalItemReloadListener;
@@ -17,6 +18,7 @@ import it.haze.hazecrates.item.ExternalItemService;
 import it.haze.hazecrates.item.NexoItemsLoadedListener;
 import it.haze.hazecrates.key.KeyService;
 import it.haze.hazecrates.listener.CrateListener;
+import it.haze.hazecrates.listener.PlayerDataListener;
 import it.haze.hazecrates.placeholder.HazeCratesExpansion;
 import it.haze.hazecrates.reward.RewardService;
 import it.haze.hazecrates.stats.StatsService;
@@ -32,6 +34,7 @@ public final class HazeCrates extends JavaPlugin {
     private MessageService        messages;
     private CrateRegistry         crates;
     private DatabaseService       database;
+    private PlayerDataStore       playerData;
     private StatsService          stats;
     private KeyService            keys;
     private RewardService         rewards;
@@ -59,8 +62,10 @@ public final class HazeCrates extends JavaPlugin {
         crates        = new CrateRegistry(this);
         animations    = new AnimationRegistry(this);
         database      = new DatabaseService(this);
+        playerData    = new PlayerDataStore(this, database);
         database.initialize().whenComplete((unused, error) -> {
             if (error != null) getLogger().severe("Database startup failed: " + error.getMessage());
+            getServer().getScheduler().runTask(this, () -> playerData.start());
         });
 
         stats       = new StatsService(database, this);
@@ -76,6 +81,7 @@ public final class HazeCrates extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new CrateListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlayerDataListener(this), this);
 
         itemsAdderPending = getServer().getPluginManager().isPluginEnabled("ItemsAdder");
         nexoPending = getServer().getPluginManager().isPluginEnabled("Nexo");
@@ -127,6 +133,7 @@ public final class HazeCrates extends JavaPlugin {
             externalRefreshTask.cancel();
             externalRefreshTask = null;
         }
+        if (playerData != null) playerData.shutdown();
         if (database != null) database.close();
     }
 
@@ -234,6 +241,7 @@ public final class HazeCrates extends JavaPlugin {
     public MessageService        messages()      { return messages; }
     public CrateRegistry         crates()        { return crates; }
     public DatabaseService       database()      { return database; }
+    public PlayerDataStore       playerData()    { return playerData; }
     public StatsService          stats()         { return stats; }
     public KeyService            keys()          { return keys; }
     public RewardService         rewards()       { return rewards; }

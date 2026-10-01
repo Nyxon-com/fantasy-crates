@@ -19,6 +19,10 @@ public final class GuiOpeningTheme {
     public static final Material HIGHLIGHT = Material.LIME_STAINED_GLASS_PANE;
 
     private static final MiniMessage MINI = MiniMessage.miniMessage();
+    private static final Component OPENING_TITLE = title("<gold>Apertura</gold>");
+    private static final ItemStack FILL_ITEM = pane(FILL);
+    private static final ItemStack POINTER_ITEM = pane(ACCENT);
+    private static final ItemStack WIN_POINTER_ITEM = pane(HIGHLIGHT);
 
     private GuiOpeningTheme() {}
 
@@ -27,7 +31,7 @@ public final class GuiOpeningTheme {
     }
 
     public static Component openingTitle() {
-        return title("<gold>Apertura</gold>");
+        return OPENING_TITLE;
     }
 
     public static ItemStack pane(Material material) {
@@ -40,19 +44,19 @@ public final class GuiOpeningTheme {
     }
 
     public static ItemStack fill() {
-        return pane(FILL);
+        return FILL_ITEM.clone();
     }
 
     public static ItemStack pointer() {
-        return pane(ACCENT);
+        return POINTER_ITEM.clone();
     }
 
     public static ItemStack winPointer() {
-        return pane(HIGHLIGHT);
+        return WIN_POINTER_ITEM.clone();
     }
 
     public static void fillAll(Inventory inventory) {
-        ItemStack fill = fill();
+        ItemStack fill = FILL_ITEM;
         for (int i = 0; i < inventory.getSize(); i++) {
             inventory.setItem(i, fill);
         }

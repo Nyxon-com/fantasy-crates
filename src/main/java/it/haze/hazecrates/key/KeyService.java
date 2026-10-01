@@ -15,22 +15,17 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.util.*;
 import java.util.concurrent.*;
 
 public final class KeyService {
 
     private final HazeCrates plugin;
+    @SuppressWarnings("unused")
     private final DatabaseService database;
     private final NamespacedKey keyTag;
     private final NamespacedKey crateTag;
     private final NamespacedKey crateItemTag;
-
-    private final ConcurrentMap<String, Integer> cache = new ConcurrentHashMap<>();
-
-    private final ConcurrentMap<String, Integer> memKeys = new ConcurrentHashMap<>();
 
     private final ConcurrentMap<String, ItemSpec> specCache = new ConcurrentHashMap<>();
 
@@ -256,132 +251,56 @@ public final class KeyService {
         return amount - left;
     }
 
-    private String mk(UUID uuid, String crate) { return uuid + ":" + crate; }
-
     public CompletableFuture<Integer> virtual(UUID uuid, String crate) {
-        if (!database.isAvailable())
-            return CompletableFuture.completedFuture(memKeys.getOrDefault(mk(uuid, crate), 0));
-        Integer c = cache.get(mk(uuid, crate));
-        if (c != null) return CompletableFuture.completedFuture(c);
-        return database.query(conn -> {
-            try (PreparedStatement s = conn.prepareStatement(
-                    "SELECT amount FROM fc_virtual_keys WHERE uuid=? AND crate_id=?")) {
-                s.setString(1, uuid.toString()); s.setString(2, crate);
-                ResultSet r = s.executeQuery();
-                int v = r.next() ? r.getInt(1) : 0;
-                cache.put(mk(uuid, crate), v);
-                return v;
-            } catch (Exception e) { throw new CompletionException(e); }
-        }, 0);
+        var store = plugin.playerData();
+        if (store.isLoaded(uuid)) {
+            return CompletableFuture.completedFuture(store.getKeys(uuid, crate));
+        }
+        return store.load(uuid).thenApply(v -> store.getKeys(uuid, crate));
     }
 
     public CompletableFuture<Boolean> consumeVirtual(UUID uuid, String crate) {
-        if (!database.isAvailable()) {
-            String k = mk(uuid, crate);
-            int[] consumed = {0};
-            memKeys.compute(k, (key, v) -> {
-                if (v != null && v > 0) { consumed[0] = 1; return v - 1; }
-                return v;
-            });
-            return CompletableFuture.completedFuture(consumed[0] == 1);
+        var store = plugin.playerData();
+        if (store.isLoaded(uuid)) {
+            return CompletableFuture.completedFuture(store.consumeKey(uuid, crate));
         }
-        return database.query(conn -> {
-            try (PreparedStatement s = conn.prepareStatement(
-                    "UPDATE fc_virtual_keys SET amount=amount-1 WHERE uuid=? AND crate_id=? AND amount>0")) {
-                s.setString(1, uuid.toString()); s.setString(2, crate);
-                boolean ok = s.executeUpdate() == 1;
-                if (ok) cache.computeIfPresent(mk(uuid, crate), (k, v) -> Math.max(0, v - 1));
-                return ok;
-            } catch (Exception e) { throw new CompletionException(e); }
-        }, false);
+        return store.load(uuid).thenApply(v -> store.consumeKey(uuid, crate));
     }
 
     public CompletableFuture<Void> setVirtual(UUID uuid, String crate, int amount) {
-        if (!database.isAvailable()) {
-            memKeys.put(mk(uuid, crate), Math.max(0, amount));
+        var store = plugin.playerData();
+        Runnable apply = () -> store.setKeys(uuid, crate, amount);
+        if (store.isLoaded(uuid)) {
+            apply.run();
             return CompletableFuture.completedFuture(null);
         }
-        return database.query(conn -> {
-            try {
-                try (PreparedStatement ins = conn.prepareStatement(
-                        "INSERT OR IGNORE INTO fc_virtual_keys(uuid,crate_id,amount) VALUES(?,?,0)")) {
-                    ins.setString(1, uuid.toString()); ins.setString(2, crate); ins.executeUpdate();
-                }
-                try (PreparedStatement upd = conn.prepareStatement(
-                        "UPDATE fc_virtual_keys SET amount=? WHERE uuid=? AND crate_id=?")) {
-                    upd.setInt(1, Math.max(0, amount)); upd.setString(2, uuid.toString()); upd.setString(3, crate);
-                    upd.executeUpdate();
-                }
-                cache.put(mk(uuid, crate), Math.max(0, amount));
-                return null;
-            } catch (Exception e) { throw new CompletionException(e); }
-        }, null);
+        return store.load(uuid).thenRun(apply);
     }
 
     public CompletableFuture<Boolean> takeVirtual(UUID uuid, String crate, int amount) {
-        if (amount <= 0) return CompletableFuture.completedFuture(true);
-        if (!database.isAvailable()) {
-            String k = mk(uuid, crate);
-            int current = memKeys.getOrDefault(k, 0);
-            if (current >= amount) {
-                memKeys.put(k, current - amount);
-                return CompletableFuture.completedFuture(true);
-            }
-            return CompletableFuture.completedFuture(false);
+        var store = plugin.playerData();
+        if (store.isLoaded(uuid)) {
+            return CompletableFuture.completedFuture(store.takeKeys(uuid, crate, amount));
         }
-        return database.query(conn -> {
-            try (PreparedStatement s = conn.prepareStatement(
-                    "UPDATE fc_virtual_keys SET amount=amount-? WHERE uuid=? AND crate_id=? AND amount>=?")) {
-                s.setInt(1, amount); s.setString(2, uuid.toString()); s.setString(3, crate); s.setInt(4, amount);
-                boolean ok = s.executeUpdate() == 1;
-                if (ok) cache.computeIfPresent(mk(uuid, crate), (k, v) -> Math.max(0, v - amount));
-                return ok;
-            } catch (Exception e) { throw new CompletionException(e); }
-        }, false);
+        return store.load(uuid).thenApply(v -> store.takeKeys(uuid, crate, amount));
     }
 
     public CompletableFuture<Void> addVirtual(UUID uuid, String crate, int amount) {
-        if (!database.isAvailable()) {
-            memKeys.merge(mk(uuid, crate), amount, Integer::sum);
+        var store = plugin.playerData();
+        Runnable apply = () -> store.addKeys(uuid, crate, amount);
+        if (store.isLoaded(uuid)) {
+            apply.run();
             return CompletableFuture.completedFuture(null);
         }
-        return database.query(conn -> {
-            try {
-                try (PreparedStatement ins = conn.prepareStatement(
-                        "INSERT OR IGNORE INTO fc_virtual_keys(uuid,crate_id,amount) VALUES(?,?,0)")) {
-                    ins.setString(1, uuid.toString()); ins.setString(2, crate); ins.executeUpdate();
-                }
-                try (PreparedStatement upd = conn.prepareStatement(
-                        "UPDATE fc_virtual_keys SET amount=MAX(0,amount+?) WHERE uuid=? AND crate_id=?")) {
-                    upd.setInt(1, amount); upd.setString(2, uuid.toString()); upd.setString(3, crate);
-                    upd.executeUpdate();
-                }
-                cache.computeIfPresent(mk(uuid, crate), (k, v) -> Math.max(0, v + amount));
-                return null;
-            } catch (Exception e) { throw new CompletionException(e); }
-        }, null);
+        return store.load(uuid).thenRun(apply);
     }
 
     public CompletableFuture<Map<String, Integer>> allVirtual(UUID uuid) {
-        if (!database.isAvailable()) {
-            String prefix = uuid + ":";
-            Map<String, Integer> out = new HashMap<>();
-            memKeys.forEach((k, v) -> { if (k.startsWith(prefix) && v > 0) out.put(k.substring(prefix.length()), v); });
-            return CompletableFuture.completedFuture(out);
+        var store = plugin.playerData();
+        if (store.isLoaded(uuid)) {
+            return CompletableFuture.completedFuture(store.allKeys(uuid));
         }
-        return database.query(conn -> {
-            try (PreparedStatement s = conn.prepareStatement(
-                    "SELECT crate_id, amount FROM fc_virtual_keys WHERE uuid=? AND amount>0")) {
-                s.setString(1, uuid.toString());
-                ResultSet r = s.executeQuery();
-                Map<String, Integer> map = new HashMap<>();
-                while (r.next()) {
-                    String id = r.getString("crate_id"); int amt = r.getInt("amount");
-                    map.put(id, amt); cache.put(mk(uuid, id), amt);
-                }
-                return map;
-            } catch (Exception e) { throw new CompletionException(e); }
-        }, Map.of());
+        return store.load(uuid).thenApply(v -> store.allKeys(uuid));
     }
 
     public void play(Player player, String crateId, String event) {

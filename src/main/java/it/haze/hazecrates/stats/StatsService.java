@@ -18,11 +18,6 @@ public final class StatsService {
 
     private final DatabaseService db;
     private final HazeCrates plugin;
-    private final Map<String, Integer> openedCache = new ConcurrentHashMap<>();
-
-    private final Map<String, Integer> memOpenings = new ConcurrentHashMap<>();
-
-    private final java.util.Set<String> memClaimed = java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<String, CacheVal<List<LeaderboardEntry>>> lbCache = new ConcurrentHashMap<>();
     private final long lbTtl;
 
@@ -33,107 +28,52 @@ public final class StatsService {
                 Math.max(5, plugin.getConfig().getLong("leaderboard-cache-seconds", 60))).toNanos();
     }
 
-    private String k(UUID uuid, String crate) { return uuid + ":" + crate; }
-
     public CompletableFuture<Integer> opened(UUID uuid, String crate) {
-        Integer c = openedCache.get(k(uuid, crate));
-        if (c != null) return CompletableFuture.completedFuture(c);
-        if (!db.isAvailable()) {
-            int mem = memOpenings.getOrDefault(k(uuid, crate), 0);
-            openedCache.put(k(uuid, crate), mem);
-            return CompletableFuture.completedFuture(mem);
+        var store = plugin.playerData();
+        if (store.isLoaded(uuid)) {
+            return CompletableFuture.completedFuture(store.getOpened(uuid, crate));
         }
-        return db.query(conn -> {
-            try (PreparedStatement s = conn.prepareStatement(
-                    "SELECT total_opened FROM fc_player_stats WHERE uuid=? AND crate_id=?")) {
-                s.setString(1, uuid.toString()); s.setString(2, crate);
-                ResultSet r = s.executeQuery();
-                int v = r.next() ? r.getInt(1) : 0;
-                openedCache.put(k(uuid, crate), v);
-                return v;
-            } catch (Exception e) { throw new CompletionException(e); }
-        }, 0);
+        return store.load(uuid).thenApply(v -> store.getOpened(uuid, crate));
     }
 
     public CompletableFuture<Integer> recordOpening(Player player, CrateDefinition crate) {
-
-        int memTotal = memOpenings.merge(k(player.getUniqueId(), crate.id()), 1, Integer::sum);
-
-        if (!db.isAvailable()) {
-
-            checkMilestonesSync(player, crate, memTotal);
-            return CompletableFuture.completedFuture(memTotal);
+        var store = plugin.playerData();
+        UUID uuid = player.getUniqueId();
+        Runnable grant = () -> {
+            int total = store.incrementOpened(uuid, crate.id());
+            checkMilestones(player, crate, total);
+        };
+        if (store.isLoaded(uuid)) {
+            grant.run();
+            return CompletableFuture.completedFuture(store.getOpened(uuid, crate.id()));
         }
-
-        return db.query(conn -> {
-            try {
-                try (PreparedStatement ins = conn.prepareStatement(
-                        "INSERT OR IGNORE INTO fc_player_stats(uuid,crate_id,total_opened) VALUES(?,?,0)")) {
-                    ins.setString(1, player.getUniqueId().toString()); ins.setString(2, crate.id());
-                    ins.executeUpdate();
-                }
-                try (PreparedStatement upd = conn.prepareStatement(
-                        "UPDATE fc_player_stats SET total_opened=total_opened+1, last_opened_at=? WHERE uuid=? AND crate_id=?")) {
-                    upd.setString(1, java.time.Instant.now().toString());
-                    upd.setString(2, player.getUniqueId().toString());
-                    upd.setString(3, crate.id());
-                    upd.executeUpdate();
-                }
-                int total = openedCache.merge(k(player.getUniqueId(), crate.id()), 1, Integer::sum);
-                checkMilestones(conn, player, crate, total);
-                return total;
-            } catch (Exception e) { throw new CompletionException(e); }
-        }, 0);
+        return store.load(uuid).thenApply(v -> {
+            grant.run();
+            return store.getOpened(uuid, crate.id());
+        });
     }
 
-    private void checkMilestonesSync(Player player, CrateDefinition crate, int total) {
+    private void checkMilestones(Player player, CrateDefinition crate, int total) {
+        var store = plugin.playerData();
         for (MilestoneDefinition m : crate.milestones()) {
             if (total < m.openingsRequired()) continue;
             boolean fire;
             if (m.resetAfterClaim()) {
                 fire = total % m.openingsRequired() == 0;
             } else {
-
-                String claimKey = player.getUniqueId() + ":" + crate.id() + ":" + m.id();
-                fire = memClaimed.add(claimKey);
+                fire = store.tryClaim(player.getUniqueId(), crate.id(), m.id());
             }
-            if (fire) Bukkit.getScheduler().runTask(plugin,
-                    () -> plugin.rewards().grantMilestone(player, crate, m));
+            if (fire) {
+                Bukkit.getScheduler().runTask(plugin,
+                        () -> plugin.rewards().grantMilestone(player, crate, m));
+            }
         }
-    }
-
-    private void checkMilestones(java.sql.Connection conn, Player player,
-                                  CrateDefinition crate, int total) {
-        for (MilestoneDefinition m : crate.milestones()) {
-            if (total < m.openingsRequired()) continue;
-            boolean fire = m.resetAfterClaim()
-                    ? (total % m.openingsRequired() == 0)
-                    : markClaimed(conn, player.getUniqueId(), crate.id(), m.id());
-            if (fire) Bukkit.getScheduler().runTask(plugin,
-                    () -> plugin.rewards().grantMilestone(player, crate, m));
-        }
-    }
-
-    private boolean markClaimed(java.sql.Connection conn, UUID uuid, String crate, String ms) {
-        try {
-            try (PreparedStatement chk = conn.prepareStatement(
-                    "SELECT claimed FROM fc_reward_progress WHERE uuid=? AND crate_id=? AND milestone_id=?")) {
-                chk.setString(1, uuid.toString()); chk.setString(2, crate); chk.setString(3, ms);
-                ResultSet r = chk.executeQuery();
-                if (r.next() && r.getInt(1) == 1) return false;
-            }
-            try (PreparedStatement ins = conn.prepareStatement(
-                    "INSERT OR REPLACE INTO fc_reward_progress(uuid,crate_id,milestone_id,current_count,claimed) VALUES(?,?,?,0,1)")) {
-                ins.setString(1, uuid.toString()); ins.setString(2, crate); ins.setString(3, ms);
-                ins.executeUpdate();
-            }
-            return true;
-        } catch (Exception e) { throw new CompletionException(e); }
     }
 
     public CompletableFuture<List<LeaderboardEntry>> leaderboard(String crate) {
         CacheVal<List<LeaderboardEntry>> cv = lbCache.get(crate);
         if (cv != null && !cv.expired()) return CompletableFuture.completedFuture(cv.val);
+        if (!db.isAvailable()) return CompletableFuture.completedFuture(List.of());
         return db.query(conn -> {
             List<LeaderboardEntry> list = new ArrayList<>();
             try (PreparedStatement s = conn.prepareStatement(
