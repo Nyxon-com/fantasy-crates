@@ -1,7 +1,7 @@
 // made by haze
 package it.haze.hazecrates.util;
 
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import it.haze.hazecrates.config.MiniMessageService;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
@@ -26,23 +26,11 @@ public final class ItemFactory {
         if (meta == null) return item;
 
         if (name != null) {
-            String converted = it.haze.hazecrates.config.MessageService.legacyToMini(name);
-            try {
-                meta.displayName(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(converted));
-            } catch (Exception e) {
-                meta.displayName(LegacyComponentSerializer.legacyAmpersand().deserialize(name));
-            }
+            meta.displayName(MiniMessageService.shared().parse(name));
         }
         if (lore != null && !lore.isEmpty()) {
             meta.lore(lore.stream()
-                    .map(line -> {
-                        String converted = it.haze.hazecrates.config.MessageService.legacyToMini(line);
-                        try {
-                            return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(converted);
-                        } catch (Exception e) {
-                            return LegacyComponentSerializer.legacyAmpersand().deserialize(line);
-                        }
-                    })
+                    .map(line -> MiniMessageService.shared().parse(line))
                     .toList());
         }
         if (glow) {

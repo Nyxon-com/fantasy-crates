@@ -4,6 +4,7 @@ package it.haze.hazecrates.database;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import it.haze.hazecrates.HazeCrates;
+import it.haze.hazecrates.util.AsyncWorkService;
 
 import java.io.File;
 import java.sql.*;
@@ -14,30 +15,28 @@ import java.util.logging.Level;
 public final class DatabaseService {
 
     private final HazeCrates plugin;
-    private final ExecutorService executor;
+    private final AsyncWorkService async;
+    private CompletableFuture<Void> ready = CompletableFuture.completedFuture(null);
 
     private String sqliteUrl;
     private HikariDataSource hikari;
     private volatile boolean available = false;
     private volatile boolean sqlite    = false;
 
-    public DatabaseService(HazeCrates plugin) {
+    public DatabaseService(HazeCrates plugin, AsyncWorkService async) {
         this.plugin   = plugin;
-        this.executor = Executors.newFixedThreadPool(
-                Math.max(1, plugin.getConfig().getInt("database-async-workers", 2)),
-                Thread.ofVirtual().name("hc-db-", 0).factory());
+        this.async = async;
     }
 
     public CompletableFuture<Void> initialize() {
         String driver = plugin.getConfig().getString("database.driver", "sqlite").toLowerCase();
         boolean useRemote = plugin.getConfig().getBoolean("database.enabled", true)
                 && (driver.equals("mysql") || driver.equals("mariadb"));
-        if (useRemote) {
-            return CompletableFuture.runAsync(() -> start(driver, true), executor);
-        }
-        start(driver, false);
-        return CompletableFuture.completedFuture(null);
+        ready = async.run(() -> start(driver, useRemote));
+        return ready;
     }
+
+    public CompletableFuture<Void> ready() { return ready; }
 
     private void start(String driver, boolean remote) {
         try {
@@ -59,18 +58,25 @@ public final class DatabaseService {
         sqlite = true;
         plugin.getDataFolder().mkdirs();
         File file = new File(plugin.getDataFolder(), "data.db");
-        loadSqliteDriver();
+        DriverManager.registerDriver(new org.sqlite.JDBC());
         sqliteUrl = "jdbc:sqlite:" + file.getAbsolutePath();
         try (Connection c = DriverManager.getConnection(sqliteUrl);
              Statement s = c.createStatement()) {
             s.execute("PRAGMA journal_mode=WAL");
-            s.execute("PRAGMA synchronous=NORMAL");
         }
+        hikari = createSqlitePool(sqliteUrl);
         plugin.getLogger().info("[HazeCrates] SQLite: " + file.getAbsolutePath());
     }
 
-    private static void loadSqliteDriver() throws ClassNotFoundException {
-        Class.forName("org.sqlite.JDBC");
+    static HikariDataSource createSqlitePool(String url) {
+        HikariConfig cfg = new HikariConfig();
+        cfg.setJdbcUrl(url);
+        cfg.setDriverClassName("org.sqlite.JDBC");
+        cfg.setMaximumPoolSize(2);
+        cfg.setMinimumIdle(1);
+        cfg.setConnectionInitSql("PRAGMA synchronous=NORMAL");
+        cfg.setPoolName("HazeCrates-SQLite");
+        return new HikariDataSource(cfg);
     }
 
     private void connectRemote(String driver) throws Exception {
@@ -82,15 +88,11 @@ public final class DatabaseService {
         String pass = plugin.getConfig().getString("database.password", "");
 
         String url;
-        String cls;
         if (driver.equals("mariadb")) {
             url = "jdbc:mariadb://" + host + ":" + port + "/" + db + "?useSSL=" + ssl;
-            cls = "org.mariadb.jdbc.Driver";
         } else {
             url = "jdbc:mysql://" + host + ":" + port + "/" + db + "?useSSL=" + ssl + "&allowPublicKeyRetrieval=true";
-            cls = "com.mysql.cj.jdbc.Driver";
         }
-        Class.forName(cls);
         HikariConfig cfg = new HikariConfig();
         cfg.setJdbcUrl(url);
         cfg.setUsername(user);
@@ -117,7 +119,7 @@ public final class DatabaseService {
     }
 
     private Connection connection() throws SQLException {
-        return sqlite ? DriverManager.getConnection(sqliteUrl) : hikari.getConnection();
+        return hikari.getConnection();
     }
 
     public boolean isAvailable() { return available; }
@@ -125,7 +127,7 @@ public final class DatabaseService {
 
     public <T> CompletableFuture<T> query(Function<Connection, T> op, T fallback) {
         if (!available) return CompletableFuture.completedFuture(fallback);
-        return CompletableFuture.supplyAsync(() -> {
+        return async.supply(() -> {
             for (int i = 0; i < 3; i++) {
                 try (Connection c = connection()) { return op.apply(c); }
                 catch (Exception e) {
@@ -134,13 +136,31 @@ public final class DatabaseService {
                 }
             }
             throw new CompletionException("unreachable", null);
-        }, executor);
+        });
     }
 
     public <T> CompletableFuture<T> query(Function<Connection, T> op) { return query(op, null); }
 
+    public <T> CompletableFuture<T> transaction(Function<Connection, T> op) {
+        return query(conn -> {
+            try {
+                conn.setAutoCommit(false);
+                T result = op.apply(conn);
+                conn.commit();
+                return result;
+            } catch (Exception error) {
+                try {
+                    conn.rollback();
+                } catch (SQLException rollbackError) {
+                    error.addSuppressed(rollbackError);
+                }
+                throw new CompletionException(error);
+            }
+        });
+    }
+
     public void close() {
-        executor.shutdown();
+        available = false;
         if (hikari != null) hikari.close();
     }
 }

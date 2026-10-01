@@ -2,6 +2,7 @@
 package it.haze.hazecrates.gui;
 
 import net.kyori.adventure.text.Component;
+import it.haze.hazecrates.config.MiniMessageService;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
@@ -154,10 +155,7 @@ public final class GuiItems {
     }
 
     public static Component legacy(String s) {
-        if (s == null || s.isEmpty()) return Component.empty();
-        String converted = it.haze.hazecrates.config.MessageService.legacyToMini(s);
-        return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(converted)
-                .decoration(TextDecoration.ITALIC, false);
+        return MiniMessageService.shared().parse(s);
     }
 
     public static String strip(String s) {

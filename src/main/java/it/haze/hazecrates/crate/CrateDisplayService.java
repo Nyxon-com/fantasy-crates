@@ -51,7 +51,6 @@ public final class CrateDisplayService {
             if (loc == null || loc.getWorld() == null) return;
             startAt(locKey, loc, crate);
         });
-        startGlobalIdle();
     }
 
     public void stopAll() {
@@ -87,6 +86,10 @@ public final class CrateDisplayService {
 
     public void stopAt(String locKey, Location loc) {
         idleSites.remove(locKey);
+        if (idleSites.isEmpty() && globalIdleTask != null) {
+            globalIdleTask.cancel();
+            globalIdleTask = null;
+        }
         List<UUID> stands = holograms.remove(locKey);
         if (stands != null) despawn(stands);
         UUID glowId = glowEntities.remove(locKey);
@@ -190,6 +193,10 @@ public final class CrateDisplayService {
     }
 
     private void spawnIdle(Location base, IdleEffectTemplate effect, int tick) {
+        // Skip world/player lookups until this effect is due.
+        int interval = Math.max(4, effect.intervalTicks());
+        if (tick % interval != 0) return;
+
         World world = base.getWorld();
         if (world == null) return;
         if (!world.isChunkLoaded(base.getBlockX() >> 4, base.getBlockZ() >> 4)) return;
@@ -202,10 +209,6 @@ public final class CrateDisplayService {
             }
         }
         if (!playerNearby) return;
-
-        // Rispetta intervalTicks dell'effetto sul task globale a 4 tick.
-        int interval = Math.max(4, effect.intervalTicks());
-        if (tick % interval != 0) return;
 
         double cx = base.getBlockX() + 0.5;
         double cy = base.getBlockY() + effect.height();

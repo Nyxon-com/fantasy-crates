@@ -1,6 +1,8 @@
 // made by haze
 package it.haze.hazecrates.stats;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import it.haze.hazecrates.HazeCrates;
 import it.haze.hazecrates.crate.CrateDefinition;
 import it.haze.hazecrates.crate.MilestoneDefinition;
@@ -18,14 +20,16 @@ public final class StatsService {
 
     private final DatabaseService db;
     private final HazeCrates plugin;
-    private final Map<String, CacheVal<List<LeaderboardEntry>>> lbCache = new ConcurrentHashMap<>();
-    private final long lbTtl;
+    private final Cache<String, CompletableFuture<List<LeaderboardEntry>>> lbCache;
 
     public StatsService(DatabaseService db, HazeCrates plugin) {
         this.db     = db;
         this.plugin = plugin;
-        this.lbTtl  = Duration.ofSeconds(
-                Math.max(5, plugin.getConfig().getLong("leaderboard-cache-seconds", 60))).toNanos();
+        this.lbCache = Caffeine.newBuilder()
+                .maximumSize(128)
+                .expireAfterWrite(Duration.ofSeconds(
+                        Math.max(5, plugin.getConfig().getLong("leaderboard-cache-seconds", 60))))
+                .build();
     }
 
     public CompletableFuture<Integer> opened(UUID uuid, String crate) {
@@ -41,7 +45,7 @@ public final class StatsService {
         UUID uuid = player.getUniqueId();
         Runnable grant = () -> {
             int total = store.incrementOpened(uuid, crate.id());
-            checkMilestones(player, crate, total);
+            checkMilestones(uuid, player, crate, total);
         };
         if (store.isLoaded(uuid)) {
             grant.run();
@@ -53,7 +57,7 @@ public final class StatsService {
         });
     }
 
-    private void checkMilestones(Player player, CrateDefinition crate, int total) {
+    private void checkMilestones(UUID uuid, Player player, CrateDefinition crate, int total) {
         var store = plugin.playerData();
         for (MilestoneDefinition m : crate.milestones()) {
             if (total < m.openingsRequired()) continue;
@@ -61,34 +65,47 @@ public final class StatsService {
             if (m.resetAfterClaim()) {
                 fire = total % m.openingsRequired() == 0;
             } else {
-                fire = store.tryClaim(player.getUniqueId(), crate.id(), m.id());
+                fire = store.tryClaim(uuid, crate.id(), m.id());
             }
             if (fire) {
-                Bukkit.getScheduler().runTask(plugin,
-                        () -> plugin.rewards().grantMilestone(player, crate, m));
+                Runnable grant = () -> plugin.rewards().grantMilestone(player, crate, m);
+                if (Bukkit.isPrimaryThread()) grant.run();
+                else Bukkit.getScheduler().runTask(plugin, grant);
             }
         }
     }
 
     public CompletableFuture<List<LeaderboardEntry>> leaderboard(String crate) {
-        CacheVal<List<LeaderboardEntry>> cv = lbCache.get(crate);
-        if (cv != null && !cv.expired()) return CompletableFuture.completedFuture(cv.val);
         if (!db.isAvailable()) return CompletableFuture.completedFuture(List.of());
-        return db.query(conn -> {
-            List<LeaderboardEntry> list = new ArrayList<>();
-            try (PreparedStatement s = conn.prepareStatement(
-                    "SELECT uuid, total_opened FROM fc_player_stats WHERE crate_id=? ORDER BY total_opened DESC LIMIT 100")) {
-                s.setString(1, crate);
-                ResultSet r = s.executeQuery();
-                while (r.next()) {
-                    String raw = r.getString(1);
-                    String name = resolveName(raw);
-                    list.add(new LeaderboardEntry(name, r.getInt(2)));
+        return lbCache.get(crate, key -> {
+            CompletableFuture<List<LeaderboardEntry>> result = new CompletableFuture<>();
+            db.query(conn -> {
+                List<LeaderboardEntry> rows = new ArrayList<>();
+                try (PreparedStatement s = conn.prepareStatement(
+                        "SELECT uuid, total_opened FROM fc_player_stats WHERE crate_id=? ORDER BY total_opened DESC LIMIT 100")) {
+                    s.setString(1, key);
+                    ResultSet r = s.executeQuery();
+                    while (r.next()) rows.add(new LeaderboardEntry(r.getString(1), r.getInt(2)));
+                    return rows;
+                } catch (Exception e) { throw new CompletionException(e); }
+            }, List.<LeaderboardEntry>of()).whenComplete((rows, error) -> {
+                if (error != null) {
+                    result.completeExceptionally(error);
+                    lbCache.invalidate(key);
+                    return;
                 }
-                lbCache.put(crate, new CacheVal<>(list, System.nanoTime()));
-                return list;
-            } catch (Exception e) { throw new CompletionException(e); }
-        }, List.of());
+                Runnable resolve = () -> {
+                    List<LeaderboardEntry> names = new ArrayList<>(rows.size());
+                    for (LeaderboardEntry row : rows) {
+                        names.add(new LeaderboardEntry(resolveName(row.name()), row.amount()));
+                    }
+                    result.complete(List.copyOf(names));
+                };
+                if (Bukkit.isPrimaryThread()) resolve.run();
+                else Bukkit.getScheduler().runTask(plugin, resolve);
+            });
+            return result;
+        });
     }
 
     private static String resolveName(String rawUuid) {
@@ -100,9 +117,4 @@ public final class StatsService {
         }
     }
 
-    private final class CacheVal<T> {
-        final T val; final long at;
-        CacheVal(T v, long a) { val = v; at = a; }
-        boolean expired() { return System.nanoTime() - at > lbTtl; }
-    }
 }

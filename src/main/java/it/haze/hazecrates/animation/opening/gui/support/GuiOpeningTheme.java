@@ -3,7 +3,7 @@ package it.haze.hazecrates.animation.opening.gui.support;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import it.haze.hazecrates.config.MiniMessageService;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.Inventory;
@@ -18,7 +18,6 @@ public final class GuiOpeningTheme {
     public static final Material ACCENT = Material.YELLOW_STAINED_GLASS_PANE;
     public static final Material HIGHLIGHT = Material.LIME_STAINED_GLASS_PANE;
 
-    private static final MiniMessage MINI = MiniMessage.miniMessage();
     private static final Component OPENING_TITLE = title("<gold>Apertura</gold>");
     private static final ItemStack FILL_ITEM = pane(FILL);
     private static final ItemStack POINTER_ITEM = pane(ACCENT);
@@ -27,7 +26,7 @@ public final class GuiOpeningTheme {
     private GuiOpeningTheme() {}
 
     public static Component title(String miniMessage) {
-        return MINI.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
+        return MiniMessageService.shared().parse(miniMessage);
     }
 
     public static Component openingTitle() {

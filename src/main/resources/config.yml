@@ -17,6 +17,16 @@ database:
   # Scrive su disco/DB le modifiche chiavi/stats in batch (secondi).
   flush-seconds: 5
 
+leaderboard-cache-seconds: 60
+database-async-workers: 2
+async-max-pending-actions: 256
+
+bulk-open:
+  # Shift + tasto destro: aperture per tick, senza animazione.
+  max-per-tick: 4
+  # Limite morbido: un singolo comando premio puo superarlo.
+  time-budget-ms: 2
+
 key:
   glow: true
   name: '<gradient:#C9A227:#E8D48B><bold>Chiave %crate%</bold></gradient>'
@@ -142,6 +152,3 @@ default-preview:
     "43-44":
       item: GRAY_STAINED_GLASS_PANE
       name: ' '
-
-leaderboard-cache-seconds: 60
-database-async-workers: 2

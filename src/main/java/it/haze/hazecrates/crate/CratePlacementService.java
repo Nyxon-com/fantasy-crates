@@ -2,6 +2,7 @@
 package it.haze.hazecrates.crate;
 
 import it.haze.hazecrates.HazeCrates;
+import it.haze.hazecrates.util.AsyncWorkService;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -12,7 +13,11 @@ import org.bukkit.persistence.PersistentDataType;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.logging.Level;
 
 public final class CratePlacementService {
@@ -20,12 +25,16 @@ public final class CratePlacementService {
     public static final String PDC_KEY = "crate_block";
 
     private final HazeCrates plugin;
+    private final AsyncWorkService async;
     private final NamespacedKey crateBlockKey;
     private final File storageFile;
     private final Map<String, String> placements = new LinkedHashMap<>();
+    private CompletableFuture<Void> saveTail = CompletableFuture.completedFuture(null);
+    private Map<String, String> latestSnapshot;
 
-    public CratePlacementService(HazeCrates plugin) {
+    public CratePlacementService(HazeCrates plugin, AsyncWorkService async) {
         this.plugin = plugin;
+        this.async = async;
         this.crateBlockKey = new NamespacedKey(plugin, PDC_KEY);
         this.storageFile = new File(plugin.getDataFolder(), "placed_crates.yml");
         load();
@@ -127,9 +136,34 @@ public final class CratePlacementService {
     }
 
     public void save() {
+        Map<String, String> snapshot = new LinkedHashMap<>(placements);
+        latestSnapshot = snapshot;
+        saveTail = saveTail.handle((v, error) -> null)
+                .thenCompose(v -> async.run(() -> write(snapshot)))
+                .whenComplete((v, error) -> {
+                    if (error != null) plugin.getLogger().log(Level.SEVERE,
+                            "Could not save placed_crates.yml: " + error.getMessage(), error);
+                });
+    }
+
+    public void shutdown() {
+        try {
+            saveTail.join();
+        } catch (CompletionException error) {
+            if (latestSnapshot != null) {
+                try {
+                    write(latestSnapshot);
+                } catch (CompletionException retryError) {
+                    plugin.getLogger().log(Level.SEVERE, "Could not save placed_crates.yml at shutdown", retryError);
+                }
+            }
+        }
+    }
+
+    private void write(Map<String, String> snapshot) {
         YamlConfiguration yml = new YamlConfiguration();
         List<Map<String, Object>> list = new ArrayList<>();
-        for (Map.Entry<String, String> entry : placements.entrySet()) {
+        for (Map.Entry<String, String> entry : snapshot.entrySet()) {
             String[] parts = entry.getKey().split(",");
             if (parts.length != 4) continue;
             Map<String, Object> map = new LinkedHashMap<>();
@@ -142,9 +176,9 @@ public final class CratePlacementService {
         }
         yml.set("placements", list);
         try {
-            yml.save(storageFile);
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not save placed_crates.yml: " + e.getMessage(), e);
+            Files.writeString(storageFile.toPath(), yml.saveToString(), StandardCharsets.UTF_8);
+        } catch (IOException error) {
+            throw new CompletionException(error);
         }
     }
 

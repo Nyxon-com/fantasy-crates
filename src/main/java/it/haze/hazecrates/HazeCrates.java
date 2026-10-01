@@ -22,6 +22,7 @@ import it.haze.hazecrates.listener.PlayerDataListener;
 import it.haze.hazecrates.placeholder.HazeCratesExpansion;
 import it.haze.hazecrates.reward.RewardService;
 import it.haze.hazecrates.stats.StatsService;
+import it.haze.hazecrates.util.AsyncWorkService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.EventHandler;
@@ -34,6 +35,7 @@ public final class HazeCrates extends JavaPlugin {
     private MessageService        messages;
     private CrateRegistry         crates;
     private DatabaseService       database;
+    private AsyncWorkService      asyncWork;
     private PlayerDataStore       playerData;
     private StatsService          stats;
     private KeyService            keys;
@@ -61,11 +63,14 @@ public final class HazeCrates extends JavaPlugin {
         messages      = new MessageService(this);
         crates        = new CrateRegistry(this);
         animations    = new AnimationRegistry(this);
-        database      = new DatabaseService(this);
-        playerData    = new PlayerDataStore(this, database);
+        asyncWork     = new AsyncWorkService(
+                getConfig().getInt("database-async-workers", 2),
+                getConfig().getInt("async-max-pending-actions", 256), getLogger());
+        database      = new DatabaseService(this, asyncWork);
+        playerData    = new PlayerDataStore(this, database, asyncWork);
         database.initialize().whenComplete((unused, error) -> {
             if (error != null) getLogger().severe("Database startup failed: " + error.getMessage());
-            getServer().getScheduler().runTask(this, () -> playerData.start());
+            if (isEnabled()) getServer().getScheduler().runTask(this, playerData::start);
         });
 
         stats       = new StatsService(database, this);
@@ -73,7 +78,7 @@ public final class HazeCrates extends JavaPlugin {
         rewards     = new RewardService(this);
         guiManager  = new GuiManager(this);
         crateWriter = new CrateWriter(this);
-        placements  = new CratePlacementService(this);
+        placements  = new CratePlacementService(this, asyncWork);
         display     = new CrateDisplayService(this);
 
         commands = new CommandRegistrar(this);
@@ -134,6 +139,8 @@ public final class HazeCrates extends JavaPlugin {
             externalRefreshTask = null;
         }
         if (playerData != null) playerData.shutdown();
+        if (placements != null) placements.shutdown();
+        if (asyncWork != null) asyncWork.close();
         if (database != null) database.close();
     }
 
@@ -260,6 +267,9 @@ public final class HazeCrates extends JavaPlugin {
     }
     public AnimationSession takeAnimSession(java.util.UUID uuid) {
         return animSessions.remove(uuid);
+    }
+    public AnimationSession animSession(java.util.UUID uuid) {
+        return animSessions.get(uuid);
     }
     public boolean hasAnimSession(java.util.UUID uuid) {
         return animSessions.containsKey(uuid);
