@@ -21,10 +21,15 @@ public final class RewardService {
     }
 
     public Optional<RewardDefinition> choose(Player player, CrateDefinition crate) {
-        List<RewardDefinition> pool = accessible(player, crate);
-        if (pool.isEmpty()) return Optional.empty();
-        int total = pool.stream().mapToInt(RewardDefinition::weight).sum();
-        if (total <= 0) return Optional.empty();
+        List<RewardDefinition> pool = new ArrayList<>();
+        int total = 0;
+        for (RewardDefinition r : crate.rewards()) {
+            if (r.weight() <= 0) continue;
+            if (!r.permission().isBlank() && !player.hasPermission(r.permission())) continue;
+            pool.add(r);
+            total += r.weight();
+        }
+        if (pool.isEmpty() || total <= 0) return Optional.empty();
         int roll = random.nextInt(total);
         for (RewardDefinition r : pool) {
             roll -= r.weight();
@@ -33,15 +38,12 @@ public final class RewardService {
         return Optional.of(pool.get(pool.size() - 1));
     }
 
-    /** True se esiste almeno un premio con weight > 0 accessibile al player (permesso). */
     public boolean hasAccessible(Player player, CrateDefinition crate) {
-        return accessible(player, crate).stream().anyMatch(r -> r.weight() > 0);
-    }
-
-    private static List<RewardDefinition> accessible(Player player, CrateDefinition crate) {
-        return crate.rewards().stream()
-                .filter(r -> r.permission().isBlank() || player.hasPermission(r.permission()))
-                .toList();
+        for (RewardDefinition r : crate.rewards()) {
+            if (r.weight() <= 0) continue;
+            if (r.permission().isBlank() || player.hasPermission(r.permission())) return true;
+        }
+        return false;
     }
 
     public void grant(Player player, CrateDefinition crate, RewardDefinition reward) {
