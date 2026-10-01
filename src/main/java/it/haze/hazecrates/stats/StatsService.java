@@ -57,7 +57,7 @@ public final class StatsService {
         });
     }
 
-    private void checkMilestones(UUID uuid, Player player, CrateDefinition crate, int total) {
+    public void checkMilestones(UUID uuid, Player player, CrateDefinition crate, int total) {
         var store = plugin.playerData();
         for (MilestoneDefinition m : crate.milestones()) {
             if (total < m.openingsRequired()) continue;

@@ -330,13 +330,15 @@ public final class CrateListener implements Listener {
         int physicalToUse = Math.min(physical, toOpen);
         int virtualToUse = toOpen - physicalToUse;
 
-        int maxPerTick = Math.clamp(plugin.getConfig().getInt("bulk-open.max-per-tick", 4), 1, 16);
+        int maxPerTick = Math.clamp(plugin.getConfig().getInt("bulk-open.max-per-tick", 1), 1, 16);
+        long tickPeriod = Math.clamp(plugin.getConfig().getLong("bulk-open.tick-period", 3), 1, 20);
         long budgetNanos = Math.clamp(plugin.getConfig().getLong("bulk-open.time-budget-ms", 2), 1, 5)
                 * 1_000_000L;
         BukkitRunnable task = new BukkitRunnable() {
             int physicalLeft = physicalToUse;
             int virtualLeft = virtualToUse;
             long opened;
+            final List<String> won = new ArrayList<>(toOpen);
 
             @Override
             public void run() {
@@ -368,8 +370,11 @@ public final class CrateListener implements Listener {
                     }
 
                     try {
-                        plugin.rewards().grant(player, crate, reward, false);
-                        plugin.stats().recordOpening(player, crate);
+                        // Quiet: niente messaggio premio né broadcast globale (causa lag).
+                        plugin.rewards().grant(player, crate, reward, false, false);
+                        int total = plugin.playerData().incrementOpened(uuid, crate.id());
+                        plugin.stats().checkMilestones(uuid, player, crate, total);
+                        won.add(reward.plainName());
                         opened++;
                     } catch (Exception failure) {
                         plugin.getLogger().log(Level.SEVERE, "[HazeCrates] Bulk opening failed for " + uuid, failure);
@@ -388,10 +393,16 @@ public final class CrateListener implements Listener {
                 if (opened > 0) {
                     plugin.messages().send(player, "bulk-opening-complete",
                             Map.of("amount", Long.toString(opened), "crate", crate.displayName()));
+                    if (!won.isEmpty()) {
+                        String summary = String.join(", ", won);
+                        if (summary.length() > 120) summary = summary.substring(0, 117) + "...";
+                        plugin.messages().send(player, "bulk-opening-rewards",
+                                Map.of("rewards", summary));
+                    }
                 }
             }
         };
-        session.bind(task.runTaskTimer(plugin, 1L, 1L));
+        session.bind(task.runTaskTimer(plugin, 1L, tickPeriod));
     }
 
     public void open(Player player, CrateDefinition crate, Location location) {
