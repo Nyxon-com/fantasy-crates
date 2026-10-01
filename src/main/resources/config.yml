@@ -22,7 +22,9 @@ database-async-workers: 2
 async-max-pending-actions: 256
 
 bulk-open:
-  # Shift + tasto destro: aperture per tick, senza animazione.
+  # Quante aperture per ogni openall / shift-click (poi ripeti).
+  max-per-open: 5
+  # Aperture processate per tick, senza animazione.
   max-per-tick: 4
   # Limite morbido: un singolo comando premio puo superarlo.
   time-budget-ms: 2
