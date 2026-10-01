@@ -38,6 +38,6 @@ public final class OpenCommand extends BaseCommand {
     @Syntax("<giocatore> <crate>")
     public void onOpenOther(CommandSender sender, OnlinePlayer target, CrateDefinition crate) {
         Player receiver = target.getPlayer();
-        crates.tryOpen(receiver, crate, CrateCommands.openLocation(receiver, crate), false);
+        crates.tryOpen(receiver, crate, CrateCommands.openLocation(receiver, crate), false, false);
     }
 }

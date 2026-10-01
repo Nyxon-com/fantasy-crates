@@ -207,6 +207,15 @@ public final class CrateListener implements Listener {
     }
 
     public void tryOpen(Player player, CrateDefinition crate, Location location, boolean preferHand) {
+        tryOpen(player, crate, location, preferHand, true);
+    }
+
+    /**
+     * @param animate false = grant istantaneo (pannelli/console): evita desync GUI
+     *                quando CommandPanels chiude l'inventario nello stesso tick.
+     */
+    public void tryOpen(Player player, CrateDefinition crate, Location location,
+                        boolean preferHand, boolean animate) {
         if (!player.hasPermission("hazecrates.open." + crate.id())
                 && !player.hasPermission("hazecrates.open.*")) {
             plugin.messages().send(player, "no-permission");
@@ -228,12 +237,12 @@ public final class CrateListener implements Listener {
                 plugin.messages().send(player, "need-crate", Map.of("crate", crate.displayName()));
                 return;
             }
-            open(player, crate, location);
+            finishOpen(player, crate, location, animate);
             return;
         }
 
         if (crate.keyType() == KeyType.PHYSICAL && consumePhysical(player, crate.id(), preferHand)) {
-            open(player, crate, location);
+            finishOpen(player, crate, location, animate);
             return;
         }
 
@@ -260,8 +269,34 @@ public final class CrateListener implements Listener {
                                 }
                                 return;
                             }
-                            open(player, crate, location);
+                            finishOpen(player, crate, location, animate);
                         }));
+    }
+
+    private void finishOpen(Player player, CrateDefinition crate, Location location, boolean animate) {
+        if (animate) {
+            open(player, crate, location);
+            return;
+        }
+        // 2 tick: lascia chiudere il pannello CP prima di grantare.
+        UUID uuid = player.getUniqueId();
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            if (!player.isOnline()) {
+                plugin.takeAnimSession(uuid);
+                return;
+            }
+            if (!plugin.hasAnimSession(uuid)) return;
+            plugin.rewards().choose(player, crate).ifPresentOrElse(
+                    reward -> {
+                        plugin.takeAnimSession(uuid);
+                        plugin.rewards().grant(player, crate, reward);
+                        plugin.stats().recordOpening(player, crate);
+                    },
+                    () -> {
+                        plugin.takeAnimSession(uuid);
+                        plugin.messages().send(player, "no-rewards");
+                    });
+        }, 2L);
     }
 
     private boolean consumePhysical(Player player, String crateId, boolean preferHand) {
@@ -302,7 +337,12 @@ public final class CrateListener implements Listener {
                     plugin.messages().send(player, "database-error");
                     return;
                 }
-                startBulkOpen(player, crate, session);
+                // 2 tick dopo chiusura pannello CP, così l'inventario è stabile.
+                plugin.getServer().getScheduler().runTaskLater(plugin,
+                        () -> {
+                            if (!player.isOnline() || plugin.animSession(uuid) != session) return;
+                            startBulkOpen(player, crate, session);
+                        }, 2L);
             };
             if (org.bukkit.Bukkit.isPrimaryThread()) start.run();
             else plugin.getServer().getScheduler().runTask(plugin, start);

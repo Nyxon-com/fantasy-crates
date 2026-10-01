@@ -169,7 +169,8 @@ public final class CrateCommands extends BaseCommand {
     @Syntax("<giocatore> <crate>")
     public void onOpenOther(CommandSender sender, OnlinePlayer target, CrateDefinition crate) {
         Player receiver = target.getPlayer();
-        crates.tryOpen(receiver, crate, openLocation(receiver, crate), false);
+        // Da console/pannello: senza animazione GUI (evita desync con CommandPanels).
+        crates.tryOpen(receiver, crate, openLocation(receiver, crate), false, false);
     }
 
     @Subcommand("openall|bulk|mass")

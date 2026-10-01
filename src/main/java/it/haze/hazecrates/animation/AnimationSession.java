@@ -20,6 +20,8 @@ public final class AnimationSession {
 
     public Inventory inventory() { return inventory; }
 
+    public boolean hasReveal() { return reveal != null; }
+
     public void bind(BukkitTask task) {
         cancelTask();
         this.task = task;
