@@ -33,6 +33,7 @@ public final class ExternalItemService {
     private final boolean itemsadderEnabled;
     private final boolean nexoEnabled;
     private final ConcurrentHashMap<String, ItemStack> baseCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> mmoIdIndex = new ConcurrentHashMap<>();
 
     public ExternalItemService(HazeCrates plugin) {
         this.plugin = plugin;
@@ -47,6 +48,7 @@ public final class ExternalItemService {
 
     public void clearCache() {
         baseCache.clear();
+        mmoIdIndex.clear();
         DisplayIcon.clear();
         it.haze.hazecrates.gui.preview.PreviewInventory.clearIconCache();
     }
@@ -192,6 +194,7 @@ public final class ExternalItemService {
             if (item == null)
                 throw new IllegalArgumentException("Unknown MMOItems item ID: " + parts[1]);
 
+            mmoIdIndex.putIfAbsent(parts[1].toUpperCase(Locale.ROOT), type.getId());
             item.setAmount(Math.max(1, amount));
             return item;
         } catch (Exception e) {
@@ -326,18 +329,11 @@ public final class ExternalItemService {
             ItemStack typed = resolveMmoItems(ItemSpec.mmoitems(id), amount);
             if (isRealItem(typed)) return typed;
         }
-        try {
-            for (net.Indyuce.mmoitems.api.Type type : net.Indyuce.mmoitems.MMOItems.plugin.getTypes().getAll()) {
-                ItemStack item = net.Indyuce.mmoitems.MMOItems.plugin.getItem(type, id);
-                if (item == null) {
-                    item = net.Indyuce.mmoitems.MMOItems.plugin.getItem(type, id.toUpperCase(Locale.ROOT));
-                }
-                if (item != null && !item.getType().isAir()) {
-                    item.setAmount(Math.max(1, amount));
-                    return item;
-                }
-            }
-        } catch (Exception ignored) {}
+        String cachedType = mmoIdIndex.get(id.toUpperCase(Locale.ROOT));
+        if (cachedType != null) {
+            ItemStack item = resolveMmoItems(ItemSpec.mmoitems(cachedType + ":" + id), amount);
+            if (isRealItem(item)) return item;
+        }
         return null;
     }
 

@@ -11,6 +11,10 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
 
+/**
+ * Grant stile ExcellentCrates: clone del template in cache.
+ * Evita `mmoitems give` a ogni open (rigenera NBT/stats = lag).
+ */
 public final class RewardService {
 
     private final HazeCrates plugin;
@@ -49,14 +53,21 @@ public final class RewardService {
     }
 
     public void grant(Player player, CrateDefinition crate, RewardDefinition reward) {
-        boolean hasCommands = false;
-        for (String cmd : reward.commands()) {
-            if (cmd == null || cmd.isBlank()) continue;
-            hasCommands = true;
-            run(player, cmd);
-        }
-        if (!hasCommands) {
-            give(player, reward.icon());
+        if (giveFromTemplate(player, reward)) {
+            // ok: item da cache, niente console mi give
+        } else {
+            boolean ran = false;
+            for (String cmd : reward.commands()) {
+                if (cmd == null || cmd.isBlank()) continue;
+                ran = true;
+                run(player, cmd);
+            }
+            if (!ran) {
+                ItemStack prize = reward.prize();
+                if (prize != null) {
+                    give(player, prize);
+                }
+            }
         }
 
         plugin.messages().send(player, "reward", Map.of("reward", reward.plainName()));
@@ -77,6 +88,42 @@ public final class RewardService {
                 }
             }
         }
+    }
+
+    /**
+     * Se i commands sono solo give di provider custom verso questo reward,
+     * consegna il template già risolto (ExcellentCrates-like).
+     */
+    private boolean giveFromTemplate(Player player, RewardDefinition reward) {
+        ItemStack prize = reward.prize();
+        if (prize == null) {
+            return false;
+        }
+        List<String> commands = reward.commands();
+        if (commands == null || commands.isEmpty()) {
+            give(player, prize);
+            return true;
+        }
+        for (String raw : commands) {
+            if (raw == null || raw.isBlank()) continue;
+            if (!isProviderGiveCommand(raw)) {
+                return false;
+            }
+        }
+        give(player, prize);
+        return true;
+    }
+
+    private static boolean isProviderGiveCommand(String raw) {
+        String cmd = raw.trim();
+        if (cmd.startsWith("/")) cmd = cmd.substring(1);
+        String lower = cmd.toLowerCase(Locale.ROOT);
+        return lower.startsWith("mmoitems give ")
+                || lower.startsWith("mi give ")
+                || lower.startsWith("nexo give ")
+                || lower.startsWith("iagive ")
+                || lower.startsWith("ia give ")
+                || lower.startsWith("give ");
     }
 
     public void grantMilestone(Player player, CrateDefinition crate, MilestoneDefinition m) {
