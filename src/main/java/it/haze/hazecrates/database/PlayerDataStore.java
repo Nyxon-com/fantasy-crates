@@ -86,6 +86,10 @@ public final class PlayerDataStore {
         if (loaded.contains(uuid)) {
             return CompletableFuture.completedFuture(null);
         }
+        CompletableFuture<Void> pendingUnload = unloading.get(uuid);
+        if (pendingUnload != null && !pendingUnload.isDone()) {
+            return pendingUnload.handle((v, err) -> null).thenCompose(v -> load(uuid));
+        }
         CompletableFuture<Void> future = loading.computeIfAbsent(uuid, id -> db.ready().thenCompose(ready -> {
             if (!db.isAvailable()) {
                 loaded.add(id);
@@ -108,7 +112,6 @@ public final class PlayerDataStore {
             if (err != null) {
                 plugin.getLogger().log(Level.WARNING,
                         "[HazeCrates] Load dati player fallito: " + uuid, err);
-                loaded.add(uuid);
             }
         });
         return future;
@@ -221,7 +224,10 @@ public final class PlayerDataStore {
             s.setString(1, uuid.toString());
             ResultSet r = s.executeQuery();
             while (r.next()) {
-                keys.put(mk(uuid, r.getString(1)), r.getInt(2));
+                String k = mk(uuid, r.getString(1));
+                if (!dirtyKeys.contains(k)) {
+                    keys.put(k, r.getInt(2));
+                }
             }
         }
     }
@@ -232,7 +238,10 @@ public final class PlayerDataStore {
             s.setString(1, uuid.toString());
             ResultSet r = s.executeQuery();
             while (r.next()) {
-                opened.put(mk(uuid, r.getString(1)), r.getInt(2));
+                String k = mk(uuid, r.getString(1));
+                if (!dirtyOpened.contains(k)) {
+                    opened.put(k, r.getInt(2));
+                }
             }
         }
     }
@@ -251,20 +260,26 @@ public final class PlayerDataStore {
     private CompletableFuture<Void> flushPlayer(UUID uuid) {
         if (!db.isAvailable()) return CompletableFuture.completedFuture(null);
         String prefix = uuid + ":";
-        Set<String> keyFlush = new HashSet<>();
-        Set<String> openFlush = new HashSet<>();
+        Map<String, Integer> keySnap = new HashMap<>();
+        Map<String, Integer> openSnap = new HashMap<>();
         Set<String> claimFlush = new HashSet<>();
-        for (String k : dirtyKeys) if (k.startsWith(prefix)) keyFlush.add(k);
-        for (String k : dirtyOpened) if (k.startsWith(prefix)) openFlush.add(k);
+        for (String k : dirtyKeys) {
+            if (k.startsWith(prefix)) keySnap.put(k, keys.getOrDefault(k, 0));
+        }
+        for (String k : dirtyOpened) {
+            if (k.startsWith(prefix)) openSnap.put(k, opened.getOrDefault(k, 0));
+        }
         for (String k : dirtyClaims) if (k.startsWith(prefix)) claimFlush.add(k);
-        if (keyFlush.isEmpty() && openFlush.isEmpty() && claimFlush.isEmpty()) return CompletableFuture.completedFuture(null);
-        dirtyKeys.removeAll(keyFlush);
-        dirtyOpened.removeAll(openFlush);
+        if (keySnap.isEmpty() && openSnap.isEmpty() && claimFlush.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        dirtyKeys.removeAll(keySnap.keySet());
+        dirtyOpened.removeAll(openSnap.keySet());
         dirtyClaims.removeAll(claimFlush);
         return db.transaction(conn -> {
                 try {
-                    writeKeys(conn, keyFlush);
-                    writeOpened(conn, openFlush);
+                    writeKeys(conn, keySnap);
+                    writeOpened(conn, openSnap);
                     writeClaims(conn, claimFlush);
                     return (Void) null;
                 } catch (Exception e) {
@@ -272,8 +287,8 @@ public final class PlayerDataStore {
                 }
             }).whenComplete((v, error) -> {
                 if (error != null) {
-                    dirtyKeys.addAll(keyFlush);
-                    dirtyOpened.addAll(openFlush);
+                    dirtyKeys.addAll(keySnap.keySet());
+                    dirtyOpened.addAll(openSnap.keySet());
                     dirtyClaims.addAll(claimFlush);
                 }
             });
@@ -290,18 +305,20 @@ public final class PlayerDataStore {
 
     private void flushDirtyNow() {
         if (!db.isAvailable()) return;
-        Set<String> keyFlush = Set.copyOf(dirtyKeys);
-        Set<String> openFlush = Set.copyOf(dirtyOpened);
+        Map<String, Integer> keySnap = new HashMap<>();
+        Map<String, Integer> openSnap = new HashMap<>();
+        for (String k : dirtyKeys) keySnap.put(k, keys.getOrDefault(k, 0));
+        for (String k : dirtyOpened) openSnap.put(k, opened.getOrDefault(k, 0));
         Set<String> claimFlush = Set.copyOf(dirtyClaims);
-        if (keyFlush.isEmpty() && openFlush.isEmpty() && claimFlush.isEmpty()) return;
-        dirtyKeys.removeAll(keyFlush);
-        dirtyOpened.removeAll(openFlush);
+        if (keySnap.isEmpty() && openSnap.isEmpty() && claimFlush.isEmpty()) return;
+        dirtyKeys.removeAll(keySnap.keySet());
+        dirtyOpened.removeAll(openSnap.keySet());
         dirtyClaims.removeAll(claimFlush);
         try {
             db.transaction(conn -> {
                 try {
-                    writeKeys(conn, keyFlush);
-                    writeOpened(conn, openFlush);
+                    writeKeys(conn, keySnap);
+                    writeOpened(conn, openSnap);
                     writeClaims(conn, claimFlush);
                     return (Void) null;
                 } catch (Exception e) {
@@ -309,33 +326,33 @@ public final class PlayerDataStore {
                 }
             }).join();
         } catch (Exception e) {
-            dirtyKeys.addAll(keyFlush);
-            dirtyOpened.addAll(openFlush);
+            dirtyKeys.addAll(keySnap.keySet());
+            dirtyOpened.addAll(openSnap.keySet());
             dirtyClaims.addAll(claimFlush);
             plugin.getLogger().log(Level.WARNING, "[HazeCrates] Flush DB fallito", e);
         }
     }
 
-    private void writeKeys(Connection conn, Set<String> entries) throws Exception {
+    private void writeKeys(Connection conn, Map<String, Integer> entries) throws Exception {
         if (entries.isEmpty()) return;
         boolean sqlite = db.isSqlite();
         String upsert = sqlite
                 ? "INSERT INTO fc_virtual_keys(uuid,crate_id,amount) VALUES(?,?,?) ON CONFLICT(uuid,crate_id) DO UPDATE SET amount=excluded.amount"
                 : "INSERT INTO fc_virtual_keys(uuid,crate_id,amount) VALUES(?,?,?) ON DUPLICATE KEY UPDATE amount=VALUES(amount)";
         try (PreparedStatement s = conn.prepareStatement(upsert)) {
-            for (String k : entries) {
-                String[] p = split(k);
+            for (Map.Entry<String, Integer> e : entries.entrySet()) {
+                String[] p = split(e.getKey());
                 if (p == null) continue;
                 s.setString(1, p[0]);
                 s.setString(2, p[1]);
-                s.setInt(3, keys.getOrDefault(k, 0));
+                s.setInt(3, e.getValue());
                 s.addBatch();
             }
             s.executeBatch();
         }
     }
 
-    private void writeOpened(Connection conn, Set<String> entries) throws Exception {
+    private void writeOpened(Connection conn, Map<String, Integer> entries) throws Exception {
         if (entries.isEmpty()) return;
         boolean sqlite = db.isSqlite();
         String upsert = sqlite
@@ -343,12 +360,12 @@ public final class PlayerDataStore {
                 : "INSERT INTO fc_player_stats(uuid,crate_id,total_opened,last_opened_at) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE total_opened=VALUES(total_opened), last_opened_at=VALUES(last_opened_at)";
         String now = java.time.Instant.now().toString();
         try (PreparedStatement s = conn.prepareStatement(upsert)) {
-            for (String k : entries) {
-                String[] p = split(k);
+            for (Map.Entry<String, Integer> e : entries.entrySet()) {
+                String[] p = split(e.getKey());
                 if (p == null) continue;
                 s.setString(1, p[0]);
                 s.setString(2, p[1]);
-                s.setInt(3, opened.getOrDefault(k, 0));
+                s.setInt(3, e.getValue());
                 s.setString(4, now);
                 s.addBatch();
             }
