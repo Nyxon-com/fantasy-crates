@@ -44,7 +44,6 @@ tasks.processResources {
 tasks.shadowJar {
     archiveClassifier.set("")
 
-    relocate("org.sqlite",        "it.haze.hazecrates.lib.sqlite")
     relocate("com.zaxxer.hikari", "it.haze.hazecrates.lib.hikari")
     relocate("co.aikar.commands", "it.haze.hazecrates.lib.acf")
     relocate("co.aikar.locales",  "it.haze.hazecrates.lib.locales")
