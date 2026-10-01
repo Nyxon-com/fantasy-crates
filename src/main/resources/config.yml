@@ -24,8 +24,9 @@ async-max-pending-actions: 256
 bulk-open:
   # Quante aperture per ogni openall / shift-click (poi ripeti).
   max-per-open: 5
-  # Aperture processate per tick, senza animazione.
-  max-per-tick: 4
+  # 1 apertura per tick, ogni tick-period tick → meno spike TPS.
+  max-per-tick: 1
+  tick-period: 3
   # Limite morbido: un singolo comando premio puo superarlo.
   time-budget-ms: 2
 
