@@ -43,6 +43,7 @@ public final class CrateCommands extends BaseCommand {
             "/crate break",
             "/crate preview [giocatore] <crate>",
             "/crate open [giocatore] <crate>",
+            "/crate openall [giocatore] <crate>",
             "/open [giocatore] <crate>",
             "/crate stats [giocatore]",
             "/crate reload"
@@ -169,6 +170,21 @@ public final class CrateCommands extends BaseCommand {
     public void onOpenOther(CommandSender sender, OnlinePlayer target, CrateDefinition crate) {
         Player receiver = target.getPlayer();
         crates.tryOpen(receiver, crate, openLocation(receiver, crate), false);
+    }
+
+    @Subcommand("openall|bulk|mass")
+    @CommandCompletion("@crates")
+    @Syntax("<crate>")
+    public void onOpenAll(Player player, CrateDefinition crate) {
+        crates.tryOpenAll(player, crate);
+    }
+
+    @Subcommand("openall|bulk|mass")
+    @CommandPermission("hazecrates.admin")
+    @CommandCompletion("@players @crates")
+    @Syntax("<giocatore> <crate>")
+    public void onOpenAllOther(CommandSender sender, OnlinePlayer target, CrateDefinition crate) {
+        crates.tryOpenAll(target.getPlayer(), crate);
     }
 
     @Subcommand("stats")
