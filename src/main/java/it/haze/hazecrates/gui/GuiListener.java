@@ -77,18 +77,14 @@ public final class GuiListener implements Listener {
             return;
         }
 
-        if (plugin.hasAnimSession(player.getUniqueId())) {
+        it.haze.hazecrates.animation.AnimationSession opening =
+                plugin.animSession(player.getUniqueId());
+        // Blocca click solo sulla GUI di animazione CSGO/roulette — non sul pannello CP
+        // mentre gira un openall/silent (session senza inventory).
+        if (opening != null && opening.inventory() != null
+                && event.getView().getTopInventory().equals(opening.inventory())) {
             event.setCancelled(true);
             return;
-        }
-
-        String titlePlainRaw = PlainTextComponentSerializer.plainText()
-                .serialize(event.getView().title());
-        if (titlePlainRaw.contains("Opening") || titlePlainRaw.contains("Apertura")) {
-            if (plugin.hasAnimSession(player.getUniqueId())) {
-                event.setCancelled(true);
-                return;
-            }
         }
 
         if (!plugin.guiManager().hasSession(player)) return;
@@ -447,7 +443,11 @@ public final class GuiListener implements Listener {
 
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
-        if (plugin.hasAnimSession(event.getWhoClicked().getUniqueId())) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        it.haze.hazecrates.animation.AnimationSession opening =
+                plugin.animSession(player.getUniqueId());
+        if (opening != null && opening.inventory() != null
+                && event.getInventory().equals(opening.inventory())) {
             event.setCancelled(true);
         }
     }
