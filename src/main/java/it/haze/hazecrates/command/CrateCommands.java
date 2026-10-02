@@ -169,8 +169,8 @@ public final class CrateCommands extends BaseCommand {
     @Syntax("<giocatore> <crate>")
     public void onOpenOther(CommandSender sender, OnlinePlayer target, CrateDefinition crate) {
         Player receiver = target.getPlayer();
-        // Da console/pannello: senza animazione GUI (evita desync con CommandPanels).
-        crates.tryOpen(receiver, crate, openLocation(receiver, crate), false, false);
+        // Pannello/console: animazione con delay (finishOpen chiude inv e avvia CSGO).
+        crates.tryOpen(receiver, crate, openLocation(receiver, crate), false, true);
     }
 
     @Subcommand("openall|bulk|mass")

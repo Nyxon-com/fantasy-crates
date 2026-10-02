@@ -24,10 +24,14 @@ async-max-pending-actions: 256
 bulk-open:
   # Quante aperture per ogni openall / shift-click (poi ripeti).
   max-per-open: 5
-  # Aperture processate per tick, senza animazione.
-  max-per-tick: 4
-  # Limite morbido: un singolo comando premio puo superarlo.
+  # 1 apertura / tick-period: evita spike MS (stile ExcellentCrates mass open).
+  max-per-tick: 1
+  tick-period: 2
+  # Limite morbido sul grant nello stesso tick.
   time-budget-ms: 2
+  # Annunci globali in coda (sempre tutti, senza flood nello stesso tick).
+  broadcast-period-ticks: 2
+  broadcasts-per-tick: 1
 
 key:
   glow: true
