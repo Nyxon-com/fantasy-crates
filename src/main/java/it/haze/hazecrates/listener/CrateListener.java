@@ -408,7 +408,7 @@ public final class CrateListener implements Listener {
                     }
 
                     try {
-                        plugin.rewards().grant(player, crate, reward, false);
+                        plugin.rewards().grant(player, crate, reward, true, true);
                         plugin.stats().recordOpening(player, crate);
                         opened++;
                     } catch (Exception failure) {

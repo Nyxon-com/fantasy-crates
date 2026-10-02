@@ -53,10 +53,19 @@ public final class RewardService {
     }
 
     public void grant(Player player, CrateDefinition crate, RewardDefinition reward) {
-        grant(player, crate, reward, true);
+        grant(player, crate, reward, true, false);
     }
 
     public void grant(Player player, CrateDefinition crate, RewardDefinition reward, boolean notifyPlayer) {
+        grant(player, crate, reward, notifyPlayer, false);
+    }
+
+    /**
+     * @param forceBroadcast true = annuncio globale anche se il reward ha broadcast:false
+     *                       (usato dall'open massiva).
+     */
+    public void grant(Player player, CrateDefinition crate, RewardDefinition reward,
+                      boolean notifyPlayer, boolean forceBroadcast) {
         if (giveFromTemplate(player, reward)) {
             // ok: item da cache, niente console mi give
         } else {
@@ -78,9 +87,9 @@ public final class RewardService {
             plugin.messages().send(player, "reward", Map.of("reward", reward.plainName()));
         }
 
-        if (!crate.broadcast().isBlank() && reward.broadcast()) {
+        if (!crate.broadcast().isBlank() && (forceBroadcast || reward.broadcast())) {
             int threshold = crate.broadcastThreshold();
-            boolean allowed = threshold <= 0 || reward.weight() <= threshold;
+            boolean allowed = forceBroadcast || threshold <= 0 || reward.weight() <= threshold;
             if (allowed) {
                 var message = plugin.messages().prefix().append(plugin.messages().parse(
                         crate.broadcast(),
