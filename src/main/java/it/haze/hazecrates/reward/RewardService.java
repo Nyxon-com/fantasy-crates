@@ -19,9 +19,22 @@ public final class RewardService {
 
     private final HazeCrates plugin;
     private final Random random = new Random();
+    private BroadcastQueue broadcasts;
 
     public RewardService(HazeCrates plugin) {
         this.plugin = plugin;
+        reloadBroadcastQueue();
+    }
+
+    public void reloadBroadcastQueue() {
+        if (broadcasts != null) broadcasts.clear();
+        int period = Math.max(1, plugin.getConfig().getInt("bulk-open.broadcast-period-ticks", 2));
+        int perTick = Math.max(1, plugin.getConfig().getInt("bulk-open.broadcasts-per-tick", 1));
+        this.broadcasts = new BroadcastQueue(plugin, period, perTick);
+    }
+
+    public void shutdown() {
+        if (broadcasts != null) broadcasts.clear();
     }
 
     public Optional<RewardDefinition> choose(Player player, CrateDefinition crate) {
@@ -98,9 +111,8 @@ public final class RewardService {
                                 "reward", reward.plainName(),
                                 "crate", crate.displayName()
                         )));
-                for (Player online : Bukkit.getOnlinePlayers()) {
-                    online.sendMessage(message);
-                }
+                // Coda rate-limited: niente N×onlinePlayers nello stesso tick.
+                broadcasts.enqueue(message);
             }
         }
     }

@@ -133,6 +133,7 @@ public final class HazeCrates extends JavaPlugin {
         if (commands != null) commands.unregister();
         it.haze.hazecrates.animation.opening.world.support.OpeningProps.clearAll();
         it.haze.hazecrates.animation.opening.world.support.TempOpenChest.restoreAll();
+        if (rewards != null) rewards.shutdown();
         if (display  != null) display.stopAll();
         if (externalRefreshTask != null) {
             externalRefreshTask.cancel();
@@ -151,6 +152,7 @@ public final class HazeCrates extends JavaPlugin {
         animations.reload();
         crates.reload();
         keys.reload();
+        if (rewards != null) rewards.reloadBroadcastQueue();
         startDisplay();
     }
 

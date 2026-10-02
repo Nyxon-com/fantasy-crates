@@ -274,12 +274,23 @@ public final class CrateListener implements Listener {
     }
 
     private void finishOpen(Player player, CrateDefinition crate, Location location, boolean animate) {
+        UUID uuid = player.getUniqueId();
         if (animate) {
-            open(player, crate, location);
+            // Delay: chiudi pannello CP / inv aperti, poi avvia CSGO (come ExcellentCrates).
+            boolean invOpen = player.getOpenInventory().getTopInventory().getType()
+                    != org.bukkit.event.inventory.InventoryType.CRAFTING;
+            long delay = invOpen ? 2L : 0L;
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (!player.isOnline() || !plugin.hasAnimSession(uuid)) return;
+                if (player.getOpenInventory().getTopInventory().getType()
+                        != org.bukkit.event.inventory.InventoryType.CRAFTING) {
+                    player.closeInventory();
+                }
+                open(player, crate, location);
+            }, delay);
             return;
         }
-        // 2 tick: lascia chiudere il pannello CP prima di grantare.
-        UUID uuid = player.getUniqueId();
+        // Silent (bulk helper): 2 tick per inventario stabile.
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             if (!player.isOnline()) {
                 plugin.takeAnimSession(uuid);
@@ -370,7 +381,8 @@ public final class CrateListener implements Listener {
         int physicalToUse = Math.min(physical, toOpen);
         int virtualToUse = toOpen - physicalToUse;
 
-        int maxPerTick = Math.clamp(plugin.getConfig().getInt("bulk-open.max-per-tick", 4), 1, 16);
+        int maxPerTick = Math.clamp(plugin.getConfig().getInt("bulk-open.max-per-tick", 1), 1, 16);
+        long tickPeriod = Math.clamp(plugin.getConfig().getLong("bulk-open.tick-period", 2), 1, 20);
         long budgetNanos = Math.clamp(plugin.getConfig().getLong("bulk-open.time-budget-ms", 2), 1, 5)
                 * 1_000_000L;
         BukkitRunnable task = new BukkitRunnable() {
@@ -408,6 +420,7 @@ public final class CrateListener implements Listener {
                     }
 
                     try {
+                        // Messaggio personale + broadcast in coda (no spike MS).
                         plugin.rewards().grant(player, crate, reward, true, true);
                         plugin.stats().recordOpening(player, crate);
                         opened++;
@@ -431,7 +444,7 @@ public final class CrateListener implements Listener {
                 }
             }
         };
-        session.bind(task.runTaskTimer(plugin, 1L, 1L));
+        session.bind(task.runTaskTimer(plugin, 1L, tickPeriod));
     }
 
     public void open(Player player, CrateDefinition crate, Location location) {
