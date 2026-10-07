@@ -52,10 +52,10 @@ tasks.test { useJUnitPlatform() }
 tasks.shadowJar {
     archiveClassifier.set("")
 
-    relocate("com.zaxxer.hikari", "it.haze.hazecrates.lib.hikari")
-    relocate("co.aikar.commands", "it.haze.hazecrates.lib.acf")
-    relocate("co.aikar.locales",  "it.haze.hazecrates.lib.locales")
-    relocate("com.github.benmanes.caffeine", "it.haze.hazecrates.lib.caffeine")
+    relocate("com.zaxxer.hikari", "net.nyxon.crates.lib.hikari")
+    relocate("co.aikar.commands", "net.nyxon.crates.lib.acf")
+    relocate("co.aikar.locales",  "net.nyxon.crates.lib.locales")
+    relocate("com.github.benmanes.caffeine", "net.nyxon.crates.lib.caffeine")
 
     exclude("org/sqlite/native/FreeBSD/**")
     exclude("org/sqlite/native/Linux/aarch64/**")
@@ -88,7 +88,7 @@ tasks.shadowJar {
 
     doLast {
         ZipFile(archiveFile.get().asFile).use { jar ->
-            check(jar.getEntry("it/haze/hazecrates/lib/hikari/metrics/MetricsTrackerFactory.class") != null) {
+            check(jar.getEntry("net/nyxon/crates/lib/hikari/metrics/MetricsTrackerFactory.class") != null) {
                 "Shaded HikariCP is missing MetricsTrackerFactory"
             }
         }

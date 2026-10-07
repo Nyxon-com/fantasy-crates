@@ -1,9 +1,9 @@
-# HazeCrates
+# NyxonCrates
 
 Plugin crate per **Paper 1.21**. Chiavi fisiche, virtuali e lootbox, editor in game, preview per slot, item vanilla / MMOItems / ItemsAdder / Nexo.
 
-Cartella dati: `plugins/HazeCrates/`  
-JAR: `HazeCrates-1.0.0.jar`
+Cartella dati: `plugins/NyxonCrates/`  
+JAR: `NyxonCrates-1.0.0.jar`
 
 ## Requisiti
 
@@ -20,7 +20,7 @@ JAR: `HazeCrates-1.0.0.jar`
 
 1. Metti il JAR in `plugins/`.
 2. Avvia il server: vengono creati `config.yml`, `messages.yml`, `animations.yml`, `keys.yml` e `crates/example.yml`.
-3. Per MySQL/MariaDB modifica `database` in `config.yml`. SQLite parte da solo (`plugins/HazeCrates/data.db`).
+3. Per MySQL/MariaDB modifica `database` in `config.yml`. SQLite parte da solo (`plugins/NyxonCrates/data.db`).
 4. `/crate reload` o riavvio.
 
 ## Quick start
@@ -35,7 +35,7 @@ JAR: `HazeCrates-1.0.0.jar`
 
 ## Comandi
 
-Permessi: `hazecrates.admin` (op), `hazecrates.key` (give/take/set), `hazecrates.item`, `hazecrates.preview` (dichiarato, la preview non lo controlla), `hazecrates.open.*` (default true).
+Permessi: `nyxoncrates.admin` (op), `nyxoncrates.key` (give/take/set), `nyxoncrates.item`, `nyxoncrates.preview` (dichiarato, la preview non lo controlla), `nyxoncrates.open.*` (default true).
 
 ### `/crate`
 
@@ -49,7 +49,7 @@ Permessi: `hazecrates.admin` (op), `hazecrates.key` (give/take/set), `hazecrates
 | `/crate place <crate>` | Piazza la crate sul blocco mirato | `admin` |
 | `/crate break` | Rimuove la crate mirata (hologram compresi) | `admin` |
 | `/crate preview <crate>` | Apre la GUI anteprima | nessuno in codice |
-| `/crate open <crate>` | Apre se hai chiave o lootbox | `hazecrates.open.<crate>` o `open.*` |
+| `/crate open <crate>` | Apre se hai chiave o lootbox | `nyxoncrates.open.<crate>` o `open.*` |
 | `/crate open <player> <crate>` | Stesso controllo sul **target** | `admin` |
 | `/open …` | Alias di `/crate open` | uguale |
 | `/crate stats [player]` | Conteggio aperture | `admin` |
@@ -120,7 +120,7 @@ Se manca `slots:`, viene ancora letto il layout vecchio (`pattern` / `items` / `
 
 `%keys%` in preview è il conteggio delle **chiavi fisiche** in inventario, non il saldo virtuale.
 
-## PlaceholderAPI (`%hazecrates_…%`)
+## PlaceholderAPI (`%nyxoncrates_…%`)
 
 | Placeholder | Valore |
 | :--- | :--- |
@@ -197,8 +197,8 @@ database:
   driver: sqlite   # sqlite | mysql | mariadb
 ```
 
-SQLite: `plugins/HazeCrates/data.db` (aperture, leaderboard, chiavi virtuali, milestone). MySQL: `driver: mysql`, `host`, `port`, `database`, `user`, `password`.
+SQLite: `plugins/NyxonCrates/data.db` (aperture, leaderboard, chiavi virtuali, milestone). MySQL: `driver: mysql`, `host`, `port`, `database`, `user`, `password`.
 
 ## License
 
-MIT. Haze / HazeCrates.
+MIT. Nyxon / NyxonCrates.

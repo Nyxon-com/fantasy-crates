@@ -1,11 +1,11 @@
-name: HazeCrates
+name: NyxonCrates
 version: ${version}
-main: it.haze.hazecrates.HazeCrates
+main: net.nyxon.crates.NyxonCrates
 api-version: '1.21'
 softdepend: [PlaceholderAPI, Vault, MMOItems, ItemsAdder, Nexo]
 permissions:
-  hazecrates.admin:    { default: op }
-  hazecrates.key:      { default: op, description: 'Puo dare e togliere chiavi' }
-  hazecrates.item:     { default: op, description: 'Puo ricevere l item di piazzamento' }
-  hazecrates.preview:  { default: true }
-  hazecrates.open.*:   { default: true }
+  nyxoncrates.admin:    { default: op }
+  nyxoncrates.key:      { default: op, description: 'Puo dare e togliere chiavi' }
+  nyxoncrates.item:     { default: op, description: 'Puo ricevere l item di piazzamento' }
+  nyxoncrates.preview:  { default: true }
+  nyxoncrates.open.*:   { default: true }

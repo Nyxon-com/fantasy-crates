@@ -1,7 +1,7 @@
 language: it
 
 database:
-  # SQLite parte sempre e crea plugins/HazeCrates/data.db
+  # SQLite parte sempre e crea plugins/NyxonCrates/data.db
   # (aperture, leaderboard, chiavi virtuali, milestone).
   # Per MySQL/MariaDB: driver: mysql e enabled: true.
   enabled: true
