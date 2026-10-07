@@ -32,6 +32,20 @@ import org.bukkit.scheduler.BukkitTask;
 
 public final class NyxonCrates extends JavaPlugin {
 
+    // Migrazione una tantum: riusa la cartella dati del vecchio plugin "HazeCrates".
+    @Override
+    public void onLoad() {
+        java.io.File target = getDataFolder();
+        java.io.File legacy = new java.io.File(target.getParentFile(), "HazeCrates");
+        if (!target.exists() && legacy.isDirectory()) {
+            if (legacy.renameTo(target)) {
+                getLogger().info("Migrata cartella dati " + legacy.getName() + " -> " + target.getName());
+            } else {
+                getLogger().warning("Impossibile rinominare " + legacy.getPath() + ": spostala a mano in " + target.getPath());
+            }
+        }
+    }
+
     private MessageService        messages;
     private CrateRegistry         crates;
     private DatabaseService       database;
